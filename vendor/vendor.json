@@ -1,0 +1,46 @@
+{
+	"comment": "",
+	"ignore": "test",
+	"package": [
+		{
+			"path": "comail.io/go/colog",
+			"revision": "fa0611f228ad4add3d26aa2fd9583a81a841a186",
+			"revisionTime": "2016-02-11T21:23:25+01:00"
+		},
+		{
+			"path": "github.com/comail/go-uuid/uuid",
+			"revision": "ed3ca8a15a931b141440a7e98e4f716eec255f7d",
+			"revisionTime": "2014-12-02T10:54:02-06:00"
+		},
+		{
+			"path": "github.com/julienschmidt/httprouter",
+			"revision": "77366a47451a56bb3ba682481eed85b64fea14e8",
+			"revisionTime": "2016-02-19T16:40:26+01:00"
+		},
+		{
+			"path": "github.com/ninibe/bigduration",
+			"revision": "88d3399741b1dc65990e9b7c5580beaae3ec3e29",
+			"revisionTime": "2016-02-25T18:16:46+01:00"
+		},
+		{
+			"path": "golang.org/x/net/context",
+			"revision": "4599ae7937fce9b670ce32b8ad32bbb7ae726b3e",
+			"revisionTime": "2016-02-20T14:44:54-08:00"
+		},
+		{
+			"path": "golang.org/x/net/http2",
+			"revision": "4599ae7937fce9b670ce32b8ad32bbb7ae726b3e",
+			"revisionTime": "2016-02-20T14:44:54-08:00"
+		},
+		{
+			"path": "golang.org/x/net/http2/hpack",
+			"revision": "4599ae7937fce9b670ce32b8ad32bbb7ae726b3e",
+			"revisionTime": "2016-02-20T14:44:54-08:00"
+		},
+		{
+			"path": "launchpad.net/gommap",
+			"revision": "15",
+			"revisionTime": "2012-10-12T09:56:17+02:00"
+		}
+	]
+}
