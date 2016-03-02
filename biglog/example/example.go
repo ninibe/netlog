@@ -40,6 +40,7 @@ func step1() {
 	// 10 is for demo purposes, is should be 10k-10M depending on your use cases
 	bl, err := biglog.Create("demo", 10)
 	panicOn(err)
+	defer bl.Close()
 
 	// Write one entry, could be any blob of bytes
 	_, err = bl.Write([]byte("some data"))
@@ -55,6 +56,7 @@ func step2() {
 	// Open an existing BigLog
 	bl, err := biglog.Open("demo")
 	panicOn(err)
+	defer bl.Close()
 
 	// Write more data
 	_, err = bl.Write([]byte("some more data"))
@@ -79,10 +81,12 @@ func step3() {
 	// Open an existing BigLog
 	bl, err := biglog.Open("demo")
 	panicOn(err)
+	defer bl.Close()
 
 	// Create a new index reader
 	ir, _, err := biglog.NewIndexReader(bl, 0)
 	panicOn(err)
+	defer ir.Close()
 
 	// Read the entries stored
 	entries, err := ir.ReadEntries(10)
@@ -94,6 +98,7 @@ func step3() {
 	// Create a new data reader
 	r, _, err := biglog.NewReader(bl, 0)
 	panicOn(err)
+	defer r.Close()
 
 	data, err := ioutil.ReadAll(r)
 	panicOn(err)
@@ -105,6 +110,7 @@ func step4() {
 	// Open an existing BigLog
 	bl, err := biglog.Open("demo")
 	panicOn(err)
+	defer bl.Close()
 
 	// WriteN means the written data contains 5 offsets
 	_, err = bl.WriteN([]byte("this is data for 5 offsets"), 5)
@@ -116,6 +122,7 @@ func step4() {
 	// Create an scanner from the beginning of the log
 	sc, err := biglog.NewScanner(bl, 0)
 	panicOn(err)
+	defer sc.Close()
 
 	for {
 		if !sc.Scan() {
@@ -130,8 +137,11 @@ func step5() {
 	// Open an existing BigLog
 	bl, err := biglog.Open("demo")
 	panicOn(err)
+	defer bl.Close()
 
 	wc := biglog.NewWatcher(bl)
+	defer wc.Close()
+
 	go func() {
 		for {
 			<-wc.Watch()
