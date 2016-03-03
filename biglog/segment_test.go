@@ -6,6 +6,7 @@ package biglog
 
 import (
 	"io"
+	"io/ioutil"
 	"math/rand"
 	"os"
 	"strings"
@@ -121,5 +122,34 @@ func TestIndexOf(t *testing.T) {
 	RO := uint32(15)
 	if iro := seg.indexOfRO(RO); iro != i*iw {
 		t.Errorf("indexOfRO %d was %d expected %d", RO, iro, i*iw)
+	}
+}
+
+func TestHealthCheckPartialWrite(t *testing.T) {
+	rand.Seed(int64(time.Now().Nanosecond()))
+	seg, err := createSegment(os.TempDir(), 128, rand.Int63())
+	panicOn(err)
+	defer seg.Delete(true)
+
+	seg.WriteN([]byte("some"), 1)
+	seg.WriteN([]byte("test"), 2)
+	seg.WriteN([]byte("data"), 1)
+
+	seg.write([]byte("bypassing the index update"))
+	seg.dataFile.Seek(0, 0)
+	data, err := ioutil.ReadAll(seg.dataFile)
+	if string(data) != "sometestdatabypassing the index update" {
+		t.Fatalf("can not test HealthCheckPartialWrite, data: %s", data)
+	}
+
+	err = seg.healthCheckPartialWrite()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	seg.dataFile.Seek(0, 0)
+	data, err = ioutil.ReadAll(seg.dataFile)
+	if string(data) != "sometestdata" {
+		t.Error("data file not corrected from partial write, data: %s", data)
 	}
 }

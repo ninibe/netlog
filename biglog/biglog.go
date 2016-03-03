@@ -142,6 +142,11 @@ func Open(dirPath string) (bl *BigLog, err error) {
 		hotSeg = seg
 	}
 
+	err = hotSeg.healthCheckPartialWrite()
+	if err != nil {
+		return nil, err
+	}
+
 	err = bl.setHotSeg(hotSeg)
 	bl.watchers.Store(make(watcherMap, 0))
 	bl.readers.Store(make(readerMap, 0))

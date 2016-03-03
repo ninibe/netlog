@@ -468,6 +468,60 @@ func (s *segment) indexOfDFO(dFO int64) int {
 	return (i - 1) * iw
 }
 
+// if the process unexpectedly terminates while writing data before the index can be updated
+// this will lead to a corrupt entry on the next write. this function checks that NdFO indeed
+// corresponds with the end of the data file as it should. It corrects the data file otherwise.
+func (s *segment) healthCheckPartialWrite() error {
+
+	in, err := s.Info()
+	if err != nil {
+		return err
+	}
+
+	// all good
+	if s.NdFO == in.DataSize {
+		return nil
+	}
+
+	Logger.Printf("warn: data file %d bytes larger than index. rebuilding...", in.DataSize-s.NdFO)
+
+	/// prepare new data file
+	tmpDataPath := s.dataPath + ".temp"
+	err = createSegData(tmpDataPath)
+	if err != nil {
+		return err
+	}
+
+	tmpDataFile, err := os.OpenFile(tmpDataPath, os.O_RDWR|os.O_APPEND, 0666)
+	if err != nil {
+		return err
+	}
+
+	// copy only known data
+	_, _ = s.dataFile.Seek(0, 0)
+	written, err := io.Copy(tmpDataFile, io.LimitReader(s.dataFile, s.NdFO))
+	if err != nil {
+		log.Printf("alert: Needed to write %d bytes. Wrote %d bytes Err: %s", s.NdFO, written, err)
+		return err
+	}
+
+	if err = tmpDataFile.Close(); err != nil {
+		return err
+	}
+
+	// remove old file
+	if err = os.Remove(s.dataPath); err != nil {
+		return err
+	}
+
+	if err = os.Rename(tmpDataPath, s.dataPath); err != nil {
+		return err
+	}
+
+	s.dataFile, err = os.OpenFile(s.dataPath, os.O_RDWR|os.O_APPEND, 0666)
+	return err
+}
+
 func createSegIndex(path string, maxIndexEntries int) error {
 	f, err := os.OpenFile(path, os.O_WRONLY|os.O_CREATE|os.O_EXCL, 0666)
 	if err != nil {
