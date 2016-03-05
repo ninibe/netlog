@@ -87,6 +87,7 @@ func (nl *NetLog) loadTopics() (err error) {
 		if f.IsDir() {
 			err = nl.loadTopic(f.Name())
 			if err != nil {
+				log.Printf("error: failed to load topic %q error: %s", f.Name(), err)
 				break
 			}
 		}
