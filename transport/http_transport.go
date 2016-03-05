@@ -173,14 +173,13 @@ func (ht *HTTPTransport) handleTopicInfo(w http.ResponseWriter, r *http.Request,
 		return
 	}
 
-	blInfo, err := t.Info()
+	info, err := t.Info()
 	if err != nil {
 		JSONErrorResponse(w, err)
 		return
 	}
 
-	blInfo.Segments = nil
-	JSONResponse(w, blInfo)
+	JSONResponse(w, info)
 }
 
 func (ht *HTTPTransport) handleServerInfo(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
