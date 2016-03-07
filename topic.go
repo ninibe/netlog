@@ -77,6 +77,11 @@ func (t *Topic) Sync() error {
 	return t.bl.Sync()
 }
 
+// Name returns the Topic's name, which maps to the folder name
+func (t *Topic) Name() string {
+	return t.name
+}
+
 type TopicInfo struct {
 	biglog.Info
 }
@@ -184,15 +189,24 @@ func (t *Topic) Payload(offset int64) ([]byte, error) {
 }
 
 // CreateScanner creates a new scanner starting at offset `from`.
-func (t *Topic) CreateScanner(from int64) (bs *TopicScanner, err error) {
-	bs, err = NewTopicScanner(t.bl, from)
-	if bs == nil || err != nil {
-		return bs, ExtErr(err)
+func (t *Topic) CreateScanner(from int64) (ts *TopicScanner, err error) {
+	defer func() {
+		if err != nil {
+			log.Printf("warn: failed to create scanner %s:%d err: %s", t.Name(), from, err)
+		}
+	}()
+
+	log.Printf("info: creating scanner from offset %d", from)
+	ts, err = NewTopicScanner(t.bl, from)
+	if ts == nil || err != nil {
+		return ts, ExtErr(err)
 	}
 
-	bs.ID = uuid.New()
-	t.scanners.Set(bs.ID, bs)
-	return bs, nil
+	ts.ID = uuid.New()
+	t.scanners.Set(ts.ID, ts)
+
+	log.Printf("info: created scanner %s from %s:%d", ts.ID, t.Name(), from)
+	return ts, nil
 }
 
 // Scanner returns an existing scanner for the topic given and ID
@@ -206,13 +220,22 @@ func (t *Topic) Scanner(ID string) (bs *TopicScanner, err error) {
 }
 
 // DeleteScanner removes the scanner from the topic
-func (t *Topic) DeleteScanner(ID string) error {
+func (t *Topic) DeleteScanner(ID string) (err error) {
+	defer func() {
+		if err != nil {
+			log.Printf("warn: failed to delete scanner %s from %s err: %s", ID, t.Name(), err)
+		}
+	}()
+
+	log.Printf("info: deleting scanner %s from %q", ID, t.Name())
 	_, ok := t.scanners.Get(ID)
 	if !ok {
 		return ErrScannerNotFound
 	}
 
 	t.scanners.Delete(ID)
+
+	log.Printf("info: deleted scanner %s from %q", ID, t.Name())
 	return nil
 }
 
