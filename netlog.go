@@ -131,6 +131,12 @@ func (nl *NetLog) loadTopic(name string) (err error) {
 
 // CreateTopic creates a new topic with a given name and default settings.
 func (nl *NetLog) CreateTopic(name string, settings TopicSettings) (t *Topic, err error) {
+	defer func() {
+		if err != nil {
+			log.Printf("warn: failed to create topic %q: %s", name, err)
+		}
+	}()
+
 	if t, _ = nl.Topic(name); t != nil {
 		return t, ErrTopicExists
 	}
@@ -138,7 +144,6 @@ func (nl *NetLog) CreateTopic(name string, settings TopicSettings) (t *Topic, er
 	topicPath := filepath.Join(nl.dataDir, name)
 	bl, err := biglog.Create(topicPath, 100*1024)
 	if err != nil {
-		log.Printf("error: failed to create biglog: %s", err)
 		return nil, err
 	}
 
@@ -173,7 +178,14 @@ func (nl *NetLog) Topic(name string) (*Topic, error) {
 }
 
 // DeleteTopic deletes an existing topic by name.
-func (nl *NetLog) DeleteTopic(name string) error {
+func (nl *NetLog) DeleteTopic(name string, force bool) (err error) {
+	defer func() {
+		if err != nil {
+			log.Printf("warn: failed to delete topic %q: %s", name, err)
+		}
+	}()
+
+	log.Printf("info: deleting topic %q force=%t", name, force)
 	t, err := nl.Topic(name)
 	if err != nil {
 		return err
@@ -186,13 +198,14 @@ func (nl *NetLog) DeleteTopic(name string) error {
 		return err
 	}
 
-	err = t.bl.Delete(false)
+	err = t.bl.Delete(force)
 	if err != nil {
 		// in case of error register back
 		nl.register(name, t)
 		return err
 	}
 
+	log.Printf("info: deleted topic %q force=%t", name, force)
 	return nil
 }
 

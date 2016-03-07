@@ -34,7 +34,7 @@ func TestTopicCreateGetDelete(t *testing.T) {
 		t.Error("failed to retrieve topic by name")
 	}
 
-	err = nl.DeleteTopic(topicName)
+	err = nl.DeleteTopic(topicName, false)
 	if err != nil {
 		t.Error(err)
 	}
