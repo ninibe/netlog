@@ -11,6 +11,7 @@ import (
 	"log"
 	"net/http"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/julienschmidt/httprouter"
@@ -40,7 +41,7 @@ func (ht *HTTPTransport) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	router.GET("/:topic/payload/:offset", ht.handleReadPayload)
 	router.GET("/:topic/sync", ht.handleSync)
 	router.POST("/:topic/scanner", ht.handleCreateScanner)
-	//router.DELETE("/:topic/scanner", ht.handleDeleteScanner)
+	router.DELETE("/:topic/scanner", ht.handleDeleteScanner)
 	router.GET("/:topic/scan", withCtx(ht.handleScanTopic))
 	router.DELETE("/:topic", ht.handleDeleteTopic)
 	router.ServeHTTP(w, r)
@@ -187,7 +188,8 @@ func (ht *HTTPTransport) handleServerInfo(w http.ResponseWriter, r *http.Request
 }
 
 func (ht *HTTPTransport) handleDeleteTopic(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
-	err := ht.nl.DeleteTopic(ps.ByName("topic"))
+	force := trueStr(r.URL.Query().Get("force"))
+	err := ht.nl.DeleteTopic(ps.ByName("topic"), force)
 	if err != nil {
 		JSONErrorResponse(w, err)
 		return
@@ -252,16 +254,36 @@ func (ht *HTTPTransport) handleCreateScanner(w http.ResponseWriter, r *http.Requ
 		return
 	}
 
-	log.Printf("info: creating scanner from offset %d", from)
 	ts, err := t.CreateScanner(from)
 	if err != nil {
 		JSONErrorResponse(w, err)
 		return
 	}
 
-	log.Printf("info: created scanner %s from %s:%d", ts.ID, ps.ByName("topic"), from)
 	w.WriteHeader(http.StatusCreated)
 	JSONResponse(w, IDMsg{ID: ts.ID})
+}
+
+func (ht *HTTPTransport) handleDeleteScanner(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
+	t, err := ht.nl.Topic(ps.ByName("topic"))
+	if err != nil {
+		JSONErrorResponse(w, err)
+		return
+	}
+
+	ID := r.URL.Query().Get("id")
+	if ID == "" {
+		JSONErrorResponse(w, netlog.ErrBadRequest)
+		return
+	}
+
+	err = t.DeleteScanner(ID)
+	if err != nil {
+		JSONErrorResponse(w, err)
+		return
+	}
+
+	JSONOKResponse(w, "scanner deleted")
 }
 
 // IDMsg is the standard response when returning an ID
@@ -320,4 +342,9 @@ func JSONOKResponse(w http.ResponseWriter, message string) {
 	if err != nil {
 		panic(err)
 	}
+}
+
+func trueStr(s string) bool {
+	s = strings.ToLower(s)
+	return s == "1" || s == "true" || s == "yes"
 }
