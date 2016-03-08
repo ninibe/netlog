@@ -29,6 +29,13 @@ func (am *TopicScannerAtomicMap) Get(key string) (value *TopicScanner, ok bool) 
 	return value, ok
 }
 
+// GetAll returns the underlying map of pointers to TopicScanner
+// this map must NOT be modified, to change the map safely use the Set and Delete
+// functions and Get the value again
+func (am *TopicScannerAtomicMap) GetAll() map[string]*TopicScanner {
+	return am.val.Load().(_TopicScannerMap)
+}
+
 // Len returns the number of elements in the map
 func (am *TopicScannerAtomicMap) Len() int {
 	return len(am.val.Load().(_TopicScannerMap))

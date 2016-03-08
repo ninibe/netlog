@@ -24,8 +24,7 @@ const settingsFile = "settings.json"
 var enc = binary.BigEndian
 
 //go:generate atomicmapper -pointer -type Topic
-//go:generate atomicmapper -pointer -type Scanner
-//go:generate atomicmapper -pointer -type netlog/biglog.Streamer
+//go:generate atomicmapper -pointer -type TopicScanner
 
 // Topic is a log of linear messages.
 type Topic struct {
