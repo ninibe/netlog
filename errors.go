@@ -55,7 +55,7 @@ var (
 	ErrBadRequest = newErr(http.StatusBadRequest, "netlog: bad request")
 	// ErrInvalidOffset is returned when the requested offset can not be parsed into an number.
 	ErrInvalidOffset = newErr(http.StatusBadRequest, "netlog: invalid offset")
-	// ErrInvalidOffset is returned when a given big duration can not be parsed
+	// ErrInvalidDuration is returned when a given big duration can not be parsed
 	ErrInvalidDuration = newErr(http.StatusBadRequest, "netlog: invalid duration")
 	// ErrTopicExists is returning when trying to create an already existing topic.
 	ErrTopicExists = newErr(http.StatusBadRequest, "netlog: topic exists")
