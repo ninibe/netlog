@@ -8,7 +8,6 @@ import (
 	"bytes"
 	"hash/crc32"
 	"io"
-	"log"
 )
 
 //	CompVer uint8
@@ -129,23 +128,22 @@ func Unpack(m Message) ([]Message, error) {
 	return nil, nil
 }
 
-func unpackSequence(data []byte) ([]Message, error) {
+func unpackSequence(data []byte) (messages []Message, err error) {
 	r := bytes.NewReader(data)
-	var messages []Message
+	var msg Message
 
 	for {
-		msg, err := ReadMessage(r)
+		msg, err = ReadMessage(r)
 		if err != nil {
 			break
-		}
-
-		if !msg.ChecksumOK() {
-			log.Printf("warn: corrupt entry in batch sequence")
-			continue
 		}
 
 		messages = append(messages, msg)
 	}
 
-	return messages, nil
+	if err == io.EOF {
+		return messages, nil
+	}
+
+	return messages, err
 }

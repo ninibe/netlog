@@ -18,16 +18,16 @@ func testMessage(t *testing.T, data []byte, msg Message) {
 	dlen := len(data)
 
 	if len(msg.Bytes()) != dlen+headerSize {
-		t.Fatalf("Bad Message. Invalid message length from payload: %d vs expected %d", len(msg.Bytes()), dlen+headerSize)
+		t.Errorf("Bad Message. Invalid message length from payload: %d vs expected %d", len(msg.Bytes()), dlen+headerSize)
 	}
 
 	if int(msg.PLength()) != dlen {
-		t.Fatalf("Bad Message. Invalid payload length: %d vs expected %d", msg.PLength(), dlen)
+		t.Errorf("Bad Message. Invalid payload length: %d vs expected %d", msg.PLength(), dlen)
 	}
 
 	crc := crc32.ChecksumIEEE(data)
 	if crc != msg.CRC32() {
-		t.Fatalf("Bad Message. Invalid CRC32: %d vs expected %d", crc, msg.CRC32())
+		t.Errorf("Bad Message. Invalid CRC32: %d vs expected %d", crc, msg.CRC32())
 	}
 
 	if !msg.ChecksumOK() {
