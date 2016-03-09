@@ -20,6 +20,8 @@ func TestTopicScanner(t *testing.T) {
 	topic, err := nl.CreateTopic(topicName, TopicSettings{})
 	panicOn(err)
 
+	defer nl.DeleteTopic(topicName, true)
+
 	messages := randMessageSet()
 	setLen := len(messages)
 
@@ -59,14 +61,15 @@ func TestTopicScanner(t *testing.T) {
 			t.Errorf("Bad scan. Invalid scanned offset %d vs expected %d", offset, o)
 		}
 
-		if !bytes.Equal(data, m.Payload()) {
-			t.Errorf("Bad scan. Payload not equal to original data.\n Got: % x\n Exp: % x\n", m.Payload(), data)
+		if !bytes.Equal(data.Payload(), m.Payload()) {
+			t.Errorf("Bad scan. Payload not equal to original data.\n Got: % x\n Exp: % x\n", m.Payload(), data.Payload())
 		}
 	}
 
 	// Test embedded offset
 	// Offset 3 is embedded in the message-set and should have
-	// the same value as message 2 in said message-set, since offset
+	// the same value as message 2 in said message-set, since
+	// there is a first extra message
 	ts2, err := topic.CreateScanner(3)
 	data, offset, err := ts2.Scan(ctx)
 	if err != nil {
@@ -77,7 +80,7 @@ func TestTopicScanner(t *testing.T) {
 		t.Errorf("Invalid scanned offset %d vs expected %d", offset, 3)
 	}
 
-	if !bytes.Equal(data, messages[2].Payload()) {
+	if !bytes.Equal(data.Payload(), messages[2].Payload()) {
 		t.Errorf("Bad scan. Payload not equal to original data.\n Got: % x\n Exp: % x\n", messages[2].Payload(), data)
 	}
 }

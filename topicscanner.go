@@ -69,10 +69,10 @@ func (ts *TopicScanner) scanForward(target int64) (err error) {
 	return err
 }
 
-// Scan advances the Scanner to the next message, returning the bytes and the offset.
+// Scan advances the Scanner to the next message, returning the message and the offset.
 // Scan will block when it reaches EOF until there is more data available,
 // the user must provide a context to cancel the request when it needs to stop waiting.
-func (ts *TopicScanner) Scan(ctx context.Context) (data []byte, offset int64, err error) {
+func (ts *TopicScanner) Scan(ctx context.Context) (m Message, offset int64, err error) {
 	ts.mu.Lock()
 	defer ts.mu.Unlock()
 
@@ -80,13 +80,13 @@ func (ts *TopicScanner) Scan(ctx context.Context) (data []byte, offset int64, er
 		// if there is a buffered message
 		//  from a set return one of those
 		if len(ts.messages) > 0 {
-			data = ts.messages[0].Payload()
+			m = ts.messages[0]
 			offset = ts.offset
 
 			ts.offset++
 			ts.messages = ts.messages[1:]
 
-			return data, offset, nil
+			return m, offset, nil
 		}
 
 		// scan a new entry
@@ -94,10 +94,9 @@ func (ts *TopicScanner) Scan(ctx context.Context) (data []byte, offset int64, er
 		if ok {
 			ts.offset = ts.sc.Offset()
 
-			// if it's got only one message return payload
+			// if it's got only one message return it
 			if ts.sc.ODelta() == 1 {
-				msg := Message(ts.sc.Bytes())
-				return msg.Payload(), ts.offset, nil
+				return Message(ts.sc.Bytes()), ts.offset, nil
 			}
 
 			// unpack message-set into buffer
