@@ -13,10 +13,16 @@ import (
 	"path/filepath"
 	"time"
 
-	"github.com/ninibe/bigduration"
+	"comail.io/go/colog"
 
+	"github.com/ninibe/bigduration"
 	"github.com/ninibe/netlog"
 )
+
+func init() {
+	colog.Register()
+	colog.SetMinLevel(colog.LError)
+}
 
 func runTestHTTPServer() *httptest.Server {
 
