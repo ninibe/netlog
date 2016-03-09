@@ -220,6 +220,10 @@ func (s *Scanner) ODelta() int {
 
 // Err returns the first non-EOF error that was encountered by the Scanner.
 func (s *Scanner) Err() error {
+	if s.err == io.EOF {
+		return nil
+	}
+
 	return s.err
 }
 
