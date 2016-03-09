@@ -212,11 +212,13 @@ func (ht *HTTPTransport) handleScanTopic(ctx context.Context, w http.ResponseWri
 	}
 
 	var timeout time.Duration
+	var bd bigduration.BigDuration
+
 	wait := r.URL.Query().Get("wait")
 	if wait == "" {
 		timeout = 5 * time.Millisecond
 	} else {
-		bd, err := bigduration.ParseBigDuration(wait)
+		bd, err = bigduration.ParseBigDuration(wait)
 		if err != nil {
 			JSONErrorResponse(w, netlog.ErrInvalidDuration)
 			return
@@ -226,16 +228,17 @@ func (ht *HTTPTransport) handleScanTopic(ctx context.Context, w http.ResponseWri
 	}
 
 	ctx, _ = context.WithTimeout(ctx, timeout)
-	b, o, d, err := sc.Scan(ctx)
+	m, o, err := sc.Scan(ctx)
 	if err != nil {
 		JSONErrorResponse(w, err)
+		return
 	}
 
 	w.Header().Set("Content-Type", "application/octet-stream")
 	w.Header().Add("X-offset", strconv.FormatInt(o, 10))
-	w.Header().Add("X-delta", strconv.Itoa(d))
+	w.Header().Add("X-crc32", strconv.FormatInt(int64(m.CRC32()), 10))
 
-	_, err = w.Write(b)
+	_, err = w.Write(m.Payload())
 	if err != nil {
 		log.Printf("error: failed to write HTTP response %s", err)
 	}
