@@ -14,9 +14,15 @@ import (
 
 // TopicScanner reads one by one over the messages in a topic
 // blocking until new data is available for a period of time.
+// TopicScanners are thread-safe.
 type TopicScanner struct {
 	ID string
-	mu sync.RWMutex
+
+	mu       sync.RWMutex
+	start    int64
+	offset   int64
+	messages []Message
+
 	sc *biglog.Scanner
 	wc *biglog.Watcher
 }
@@ -28,31 +34,88 @@ func NewTopicScanner(bl *biglog.BigLog, from int64) (ts *TopicScanner, err error
 	}
 
 	sc, err := biglog.NewScanner(bl, from)
-	return &TopicScanner{
-		sc: sc,
-		wc: biglog.NewWatcher(bl),
-	}, err
+
+	ts = &TopicScanner{
+		start:  from,
+		offset: -1,
+		sc:     sc,
+		wc:     biglog.NewWatcher(bl),
+	}
+
+	// auto-scan forward if embedded offset
+	if err == biglog.ErrEmbeddedOffset {
+		err = ts.scanForward(from)
+	}
+
+	return ts, err
 }
 
-// Scan advances the Scanner to the next entry, returning the bytes, the offset number and the
-// number of offsets within the entry. Scan will block when it reaches EOF until there is more
-// data available, the user must provide a context to cancel the request when it needs to stop waiting.
-func (ts *TopicScanner) Scan(ctx context.Context) (data []byte, offset int64, delta int, err error) {
+// scans in a loop until the next offset is the target offset
+func (ts *TopicScanner) scanForward(target int64) (err error) {
+	ctx := context.Background()
+	var offset int64
+	for {
+		_, offset, err = ts.Scan(ctx)
+		// escape when next is the target offset
+		if offset+1 == target {
+			break
+		}
+
+		if err != nil {
+			return err
+		}
+	}
+
+	return err
+}
+
+// Scan advances the Scanner to the next message, returning the bytes and the offset.
+// Scan will block when it reaches EOF until there is more data available,
+// the user must provide a context to cancel the request when it needs to stop waiting.
+func (ts *TopicScanner) Scan(ctx context.Context) (data []byte, offset int64, err error) {
 	ts.mu.Lock()
 	defer ts.mu.Unlock()
 
-	if ok := ts.scan(ctx); ok {
-		return ts.Bytes(), ts.Offset(), ts.sc.ODelta(), nil
+	for {
+		// if there is a buffered message
+		//  from a set return one of those
+		if len(ts.messages) > 0 {
+			data = ts.messages[0].Payload()
+			offset = ts.offset
+
+			ts.offset++
+			ts.messages = ts.messages[1:]
+
+			return data, offset, nil
+		}
+
+		// scan a new entry
+		ok := ts.scan(ctx)
+		if ok {
+			ts.offset = ts.sc.Offset()
+
+			// if it's got only one message return payload
+			if ts.sc.ODelta() == 1 {
+				msg := Message(ts.sc.Bytes())
+				return msg.Payload(), ts.offset, nil
+			}
+
+			// unpack message-set into buffer
+			ts.messages, err = Unpack(ts.sc.Bytes())
+		}
+
+		if ts.sc.Err() != nil {
+			return nil, -1, ts.sc.Err()
+		}
+
+		if !ok {
+			break
+		}
 	}
 
-	if ts.sc.Err() != nil {
-		return nil, 0, 0, ts.sc.Err()
-	}
-
-	return nil, 0, 0, ErrEndOfTopic
+	return nil, -1, ErrEndOfTopic
 }
 
-// TODO handle message batches
 func (ts *TopicScanner) scan(ctx context.Context) bool {
 	for {
 		ok := ts.sc.Scan()
@@ -64,7 +127,7 @@ func (ts *TopicScanner) scan(ctx context.Context) bool {
 		}
 
 		// we've got data?
-		if ok || ts.Err() != nil {
+		if ok || ts.sc.Err() != nil {
 			return ok
 		}
 
@@ -78,18 +141,21 @@ func (ts *TopicScanner) scan(ctx context.Context) bool {
 	}
 }
 
-// Bytes returns payload of the scanned entry.
-func (ts *TopicScanner) Bytes() []byte {
-	// TODO unpack embedded?
-	m := Message(ts.sc.Bytes())
-	return m.Payload()
+// Offset returns the offset of the last scanned message.
+func (ts *TopicScanner) Offset() int64 {
+	ts.mu.RLock()
+	defer ts.mu.RUnlock()
+
+	return ts.offset
 }
 
-// Offset returns the initial offset of the scanned entry.
-func (ts *TopicScanner) Offset() int64 { return ts.sc.Offset() } // move to return param
+// Start returns the offset of the first scanned message.
+func (ts *TopicScanner) Start() int64 {
+	ts.mu.RLock()
+	defer ts.mu.RUnlock()
 
-// Err returns the first non-EOF error that was encountered by the Scanner.
-func (ts *TopicScanner) Err() error { return ts.sc.Err() }
+	return ts.start
+}
 
 // Close implements io.Closer and releases the TopicScanner resources.
 func (ts *TopicScanner) Close() error {
@@ -98,4 +164,21 @@ func (ts *TopicScanner) Close() error {
 	}
 
 	return ts.wc.Close()
+}
+
+// TScannerInfo holds the scanner's offset information
+type TScannerInfo struct {
+	Start int64 `json:"start"`
+	Last  int64 `json:"last"`
+}
+
+// Info returns a TScannerInfo struct with the scanner's
+// original starting offset and the last scanned one
+func (ts *TopicScanner) Info() TScannerInfo {
+	ts.mu.RLock()
+	defer ts.mu.RUnlock()
+	return TScannerInfo{
+		Start: ts.start,
+		Last:  ts.offset,
+	}
 }

@@ -11,17 +11,47 @@ import (
 	"os"
 	"path/filepath"
 	"time"
+
+	"comail.io/go/colog"
+
+	"github.com/ninibe/bigduration"
 )
+
+func init() {
+	colog.Register()
+	colog.SetMinLevel(colog.LError)
+}
 
 func tempNetLog() *NetLog {
 	rand.Seed(int64(time.Now().Nanosecond()))
-	dataDir := filepath.Join(os.TempDir(), fmt.Sprintf("netlogtest-%d", rand.Int63()))
+
+	logName := fmt.Sprintf("netlogtest-%d", rand.Int63())
+	dataDir := filepath.Join(os.TempDir(), logName)
 	err := os.Mkdir(dataDir, 0777)
 	panicOn(err)
-	s, err := NewNetLog(dataDir)
+
+	longTime, err := bigduration.ParseBigDuration("1day")
+	panicOn(err)
+
+	s, err := NewNetLog(dataDir, MonitorInterval(longTime))
 	panicOn(err)
 
 	return s
+}
+
+func randMessageSet() []Message {
+	// random number of payloads with random bytes
+	data := make([][]byte, rand.Intn(90)+10)
+	for k := range data {
+		data[k] = randData(rand.Intn(90) + 10)
+	}
+
+	messages := make([]Message, len(data))
+	for k := range data {
+		messages[k] = MessageFromPayload(data[k])
+	}
+
+	return messages
 }
 
 var dictionary = "0123456789abcdefghijklmnopqrstuvwxyz"

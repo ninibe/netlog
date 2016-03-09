@@ -6,7 +6,6 @@ package netlog
 
 import (
 	"encoding/binary"
-	"hash/crc32"
 	"io"
 	"log"
 	"strconv"
@@ -71,6 +70,11 @@ func (t *Topic) Write(p []byte) (n int, err error) {
 	return t.writer.Write(p)
 }
 
+// WriteN writes a set of N messages to the Topic
+func (t *Topic) WriteN(p []byte, n int) (written int, err error) {
+	return t.bl.WriteN(p, n)
+}
+
 // Sync flushes all data to disk.
 func (t *Topic) Sync() error {
 	return t.bl.Sync()
@@ -81,14 +85,32 @@ func (t *Topic) Name() string {
 	return t.name
 }
 
+// TopicInfo returns the topic information including information
+// about size, segments, scanners and streamers
 type TopicInfo struct {
-	biglog.Info
+	*biglog.Info
+	Scanners map[string]TScannerInfo `json:"scanners"`
 }
 
 // Info provides all public topic information.
-func (t *Topic) Info() (i *biglog.Info, err error) {
-	// TODO return own version with readers' information
-	return t.bl.Info()
+func (t *Topic) Info() (i *TopicInfo, err error) {
+	bi, err := t.bl.Info()
+	if err != nil {
+		return nil, err
+	}
+
+	scanners := t.scanners.GetAll()
+	scanInfo := make(map[string]TScannerInfo, len(scanners))
+	for k, v := range scanners {
+		scanInfo[k] = v.Info()
+	}
+
+	inf := &TopicInfo{
+		Info:     bi,
+		Scanners: scanInfo,
+	}
+
+	return inf, nil
 }
 
 // CheckSegments is called by the runner and discards
@@ -144,10 +166,10 @@ func (t *Topic) checkSegmentsSize(bi *biglog.Info) error {
 // The return value n is the number of bytes read.
 // It implements the io.ReaderFrom interface.
 func (t *Topic) ReadFrom(r io.Reader) (n int64, err error) {
-	var entry Message
+	var message Message
 	for {
-		entry, err = ReadMessage(r)
-		n += int64(entry.Size())
+		message, err = ReadMessage(r)
+		n += int64(message.Size())
 		if err == io.EOF {
 			return
 		}
@@ -157,12 +179,12 @@ func (t *Topic) ReadFrom(r io.Reader) (n int64, err error) {
 			return
 		}
 
-		if crc32.ChecksumIEEE(entry.Bytes()) != entry.CRC32() {
+		if !message.ChecksumOK() {
 			log.Printf("warn: corrupt entry in stream")
 			continue
 		}
 
-		_, err = t.Write(entry.Bytes())
+		_, err = t.Write(message.Bytes())
 		if err != nil {
 			log.Printf("error: could not write stream: %s", err)
 			return
