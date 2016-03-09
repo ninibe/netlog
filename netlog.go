@@ -67,13 +67,14 @@ func NewNetLog(dataDir string, opts ...Option) (nl *NetLog, err error) {
 
 	err = nl.loadTopics()
 
-	sm := &SegmentMonitor{nl: nl}
 	mi := nl.monInterval.Duration()
 	if mi == 0 {
 		mi = time.Second
 	}
 
+	sm := &SegmentMonitor{nl: nl}
 	go sm.start(mi)
+
 	return nl, err
 }
 
@@ -114,7 +115,6 @@ func (nl *NetLog) loadTopic(name string) (err error) {
 		return err
 	}
 
-	var settings TopicSettings
 	settingsPath := filepath.Join(topicPath, settingsFile)
 	f, err := os.OpenFile(settingsPath, os.O_RDWR, 0666)
 	if err != nil {
@@ -122,6 +122,7 @@ func (nl *NetLog) loadTopic(name string) (err error) {
 	}
 
 	dec := json.NewDecoder(f)
+	var settings TopicSettings
 	dec.Decode(&settings)
 
 	t := newTopic(bl, settings, nl.topicSettings)
