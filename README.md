@@ -12,3 +12,5 @@ To peek at the internals start with [BigLog](https://github.com/ninibe/netlog/tr
 * Easy to use, curl-friendly, HTTP interface.
 * O(1) for read/write operations.
 * Master-slave asynchronous replication.
+
+[![Build Status](https://travis-ci.org/ninibe/netlog.svg?branch=master)](https://travis-ci.org/ninibe/netlog)&nbsp;[![godoc reference](https://godoc.org/github.com/ninibe/netlog?status.png)](https://godoc.org/github.com/ninibe/netlog)
