@@ -6,37 +6,62 @@ package netlog
 
 import (
 	"bytes"
+	"compress/gzip"
 	"hash/crc32"
 	"io"
 )
 
-//	CompVer uint8
-//	CRC     uint32
-//	PLength uint32
-//	Payload []byte
-
 const (
-	compverPos = 0
-	crc32Pos   = 1
-	plenthPos  = 5
-	payloadPos = 9
+	compverPos = 0 // CompVer uint8
+	crc32Pos   = 1 // CRC     uint32
+	plenthPos  = 5 // PLength uint32
+	payloadPos = 9 // Payload []byte
+	headerSize = payloadPos
 )
 
+type CompressionType uint8
+
 const (
-	headerSize        = 9
-	compressionNone   = 0
-	compressionGzip   = 1
-	compressionSnappy = 2
+	// CompressionNone is used by single messages
+	CompressionNone CompressionType = 0
+	// CompressionGzip is used by message sets with gzipped payloads
+	CompressionGzip CompressionType = 1
+	// CompressionSnappy is used by message sets with snappy payloads
+	CompressionSnappy CompressionType = 2
 )
 
-// MessageFromPayload returns a message with the appropriate
-// calculated headers from a give data payload.
+// MessageFromPayload returns a message with the appropriate calculated headers from a give data payload.
 func MessageFromPayload(p []byte) Message {
 	buf := make([]byte, len(p)+headerSize)
 	enc.PutUint32(buf[crc32Pos:crc32Pos+4], crc32.ChecksumIEEE(p))
 	enc.PutUint32(buf[plenthPos:plenthPos+4], uint32(len(p)))
 	copy(buf[payloadPos:], p)
 	return Message(buf)
+}
+
+// MessageSet returns a new message with a batch of compressed messages as payload
+// Compression will compress the payload and set the compression header, please be ware that compression
+// at this level is only meant for batching several messages into a single message-set in increase throughput.
+// MessageSet will panic if a compression type is not provided, since nothing would indicate to streaming
+// clients that further messages are embedded in the payload.
+func MessageSet(msgs []Message, comp CompressionType) Message {
+	if comp == CompressionNone {
+		panic("can not generate message-set without compression")
+	}
+
+	// TODO buffer pool?
+	buf := &bytes.Buffer{}
+	w := gzip.NewWriter(buf)
+	for _, m := range msgs {
+		w.Write(m)
+	}
+
+	w.Close()
+
+	m := MessageFromPayload(buf.Bytes())
+	m[compverPos] = byte(comp)
+
+	return m
 }
 
 // Message the unit of data storage.
@@ -48,8 +73,8 @@ func (m *Message) CompVer() uint8 {
 }
 
 // Compression returns the compression encoded in bits 4 to 8 of the header.
-func (m *Message) Compression() uint8 {
-	return m.CompVer() & 15
+func (m *Message) Compression() CompressionType {
+	return CompressionType(m.CompVer() & 15)
 }
 
 // Version returns the format version encoded in bits 0 to 3 of the header.
@@ -91,6 +116,8 @@ func (m *Message) ChecksumOK() bool {
 // ReadMessage reads a message from r and returns it
 // if the message is compressed it does not attempt to unpack the contents.
 func ReadMessage(r io.Reader) (entry Message, err error) {
+
+	// TODO buffer pool?
 	header := make([]byte, headerSize)
 	n, err := r.Read(header)
 	if err != nil {
@@ -101,7 +128,6 @@ func ReadMessage(r io.Reader) (entry Message, err error) {
 		return entry, io.ErrShortBuffer
 	}
 
-	// TODO buffer pool?
 	entry = Message(header)
 	buf := make([]byte, entry.Size())
 	copy(buf, header)
@@ -117,11 +143,13 @@ func ReadMessage(r io.Reader) (entry Message, err error) {
 func Unpack(m Message) ([]Message, error) {
 
 	switch m.Compression() {
-	case compressionNone:
+	case CompressionNone:
 		return unpackSequence(m)
-	case compressionGzip:
-		panic("not yet implemented")
-	case compressionSnappy:
+
+	case CompressionGzip:
+		return unpackGzip(m.Payload())
+
+	case CompressionSnappy:
 		panic("not yet implemented")
 	}
 
@@ -134,6 +162,30 @@ func unpackSequence(data []byte) (messages []Message, err error) {
 
 	for {
 		msg, err = ReadMessage(r)
+		if err != nil {
+			break
+		}
+
+		messages = append(messages, msg)
+	}
+
+	if err == io.EOF {
+		return messages, nil
+	}
+
+	return messages, err
+}
+
+func unpackGzip(data []byte) (messages []Message, err error) {
+	r := bytes.NewReader(data)
+	gr, err := gzip.NewReader(r)
+	if err != nil {
+		return nil, err
+	}
+	var msg Message
+
+	for {
+		msg, err = ReadMessage(gr)
 		if err != nil {
 			break
 		}

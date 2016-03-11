@@ -71,3 +71,27 @@ func TestUnpackSequence(t *testing.T) {
 		testMessage(t, d, unpacked[k])
 	}
 }
+
+func TestUnpackGzip(t *testing.T) {
+	t.Parallel()
+
+	messages := randMessageSet()
+	set := MessageSet(messages, CompressionGzip)
+
+	if set.Compression() != CompressionGzip {
+		t.Errorf("missing gzip flag, got %d", set.Compression())
+	}
+
+	unpacked, err := Unpack(set)
+	if err != nil {
+		t.Error(err)
+	}
+
+	if len(unpacked) != len(messages) {
+		t.Errorf("Unpacked %d messages vs expected %d", len(unpacked), len(messages))
+	}
+
+	for k, m := range messages {
+		testMessage(t, m.Payload(), unpacked[k])
+	}
+}
