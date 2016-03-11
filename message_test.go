@@ -42,17 +42,7 @@ func testMessage(t *testing.T, data []byte, msg Message) {
 func TestUnpackSequence(t *testing.T) {
 	t.Parallel()
 
-	// random number of payloads with random bytes
-	data := make([][]byte, rand.Intn(90)+10)
-	for k := range data {
-		data[k] = randData(rand.Intn(90) + 10)
-	}
-
-	messages := make([]Message, len(data))
-	for k := range data {
-		messages[k] = MessageFromPayload(data[k])
-	}
-
+	messages := randMessageSet()
 	var sequence []byte
 	for _, m := range messages {
 		sequence = append(sequence, m.Bytes()...)
@@ -67,8 +57,8 @@ func TestUnpackSequence(t *testing.T) {
 		t.Errorf("Unpacked %d messages vs expected %d", len(unpacked), len(messages))
 	}
 
-	for k, d := range data {
-		testMessage(t, d, unpacked[k])
+	for k, m := range messages {
+		testMessage(t, m.Payload(), unpacked[k])
 	}
 }
 
