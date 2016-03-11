@@ -5,6 +5,8 @@ import (
 	"hash/crc32"
 	"math/rand"
 	"testing"
+
+	"github.com/golang/snappy"
 )
 
 func TestMessage(t *testing.T) {
@@ -69,7 +71,35 @@ func TestUnpackGzip(t *testing.T) {
 	set := MessageSet(messages, CompressionGzip)
 
 	if set.Compression() != CompressionGzip {
-		t.Errorf("missing gzip flag, got %d", set.Compression())
+		t.Errorf("Missing gzip flag, got %d", set.Compression())
+	}
+
+	unpacked, err := Unpack(set)
+	if err != nil {
+		t.Error(err)
+	}
+
+	if len(unpacked) != len(messages) {
+		t.Errorf("Unpacked %d messages vs expected %d", len(unpacked), len(messages))
+	}
+
+	for k, m := range messages {
+		testMessage(t, m.Payload(), unpacked[k])
+	}
+}
+
+func TestUnpackSnappy(t *testing.T) {
+	t.Parallel()
+
+	messages := randMessageSet()
+	set := MessageSet(messages, CompressionSnappy)
+
+	if set.Compression() != CompressionSnappy {
+		t.Errorf("Missing snappy flag, got %d", set.Compression())
+	}
+
+	if _, err := snappy.DecodedLen(set.Payload()); err != nil {
+		t.Errorf("Set's payload does not look like snappy: %s", err)
 	}
 
 	unpacked, err := Unpack(set)

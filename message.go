@@ -9,6 +9,8 @@ import (
 	"compress/gzip"
 	"hash/crc32"
 	"io"
+
+	"github.com/golang/snappy"
 )
 
 const (
@@ -19,6 +21,7 @@ const (
 	headerSize = payloadPos
 )
 
+// CompressionType indicates a type of compression for message sets
 type CompressionType uint8
 
 const (
@@ -45,13 +48,26 @@ func MessageFromPayload(p []byte) Message {
 // MessageSet will panic if a compression type is not provided, since nothing would indicate to streaming
 // clients that further messages are embedded in the payload.
 func MessageSet(msgs []Message, comp CompressionType) Message {
+
 	if comp == CompressionNone {
 		panic("can not generate message-set without compression")
 	}
 
 	// TODO buffer pool?
 	buf := &bytes.Buffer{}
-	w := gzip.NewWriter(buf)
+	var w io.WriteCloser
+
+	switch comp {
+	case CompressionGzip:
+		w = gzip.NewWriter(buf)
+
+	case CompressionSnappy:
+		w = snappy.NewWriter(buf)
+
+	default:
+		panic("invalid compression type")
+	}
+
 	for _, m := range msgs {
 		w.Write(m)
 	}
@@ -137,65 +153,58 @@ func ReadMessage(r io.Reader) (entry Message, err error) {
 	return entry, err
 }
 
-// Unpack takes a batch of messages and returns the split into an slice
-// the batch can be either a simple byte sequence or several messages
-// compressed into one message.
-func Unpack(m Message) ([]Message, error) {
+// Unpack takes a message-set and returns a slice with the component messages.
+func Unpack(set Message) ([]Message, error) {
+	if set.Compression() > 0 {
+		// unpack compressed payload
+		return unpack(set.Payload(), set.Compression())
+	}
 
-	switch m.Compression() {
+	// if instead of a compressed message it's a sequence
+	// of uncompressed ones, reading the compression flag
+	// is effectively reading the flag on the first message.
+	// For a sequence we can unpack the data as-is.
+	return unpack(set, CompressionNone)
+}
+
+func unpack(data []byte, comp CompressionType) (msgs []Message, err error) {
+	var r io.Reader = bytes.NewReader(data)
+
+	switch comp {
 	case CompressionNone:
-		return unpackSequence(m)
-
 	case CompressionGzip:
-		return unpackGzip(m.Payload())
+		r, err = gzip.NewReader(r)
+		if err != nil {
+			return nil, err
+		}
 
 	case CompressionSnappy:
-		panic("not yet implemented")
+		r = snappy.NewReader(r)
+
+	default:
+		panic("invalid compression type")
 	}
 
-	return nil, nil
-}
+	// close reader if possible on exit
+	defer func() {
+		if r, ok := r.(io.Closer); ok {
+			r.Close()
+		}
+	}()
 
-func unpackSequence(data []byte) (messages []Message, err error) {
-	r := bytes.NewReader(data)
-	var msg Message
-
+	var m Message
 	for {
-		msg, err = ReadMessage(r)
+		m, err = ReadMessage(r)
 		if err != nil {
 			break
 		}
 
-		messages = append(messages, msg)
+		msgs = append(msgs, m)
 	}
 
 	if err == io.EOF {
-		return messages, nil
+		return msgs, nil
 	}
 
-	return messages, err
-}
-
-func unpackGzip(data []byte) (messages []Message, err error) {
-	r := bytes.NewReader(data)
-	gr, err := gzip.NewReader(r)
-	if err != nil {
-		return nil, err
-	}
-	var msg Message
-
-	for {
-		msg, err = ReadMessage(gr)
-		if err != nil {
-			break
-		}
-
-		messages = append(messages, msg)
-	}
-
-	if err == io.EOF {
-		return messages, nil
-	}
-
-	return messages, err
+	return msgs, err
 }
