@@ -13,6 +13,11 @@
 			"revisionTime": "2014-12-02T10:54:02-06:00"
 		},
 		{
+			"path": "github.com/golang/snappy",
+			"revision": "5f1c01d9f64b941dd9582c638279d046eda6ca31",
+			"revisionTime": "2016-03-04T16:48:22+11:00"
+		},
+		{
 			"path": "github.com/julienschmidt/httprouter",
 			"revision": "77366a47451a56bb3ba682481eed85b64fea14e8",
 			"revisionTime": "2016-02-19T16:40:26+01:00"
