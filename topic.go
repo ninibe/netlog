@@ -41,6 +41,12 @@ type TopicSettings struct {
 	SegAge bigduration.BigDuration `json:"segment_age,ommitempty"`
 	// SegSize is the size at which a new segment should be created.
 	SegSize int64 `json:"segment_size,ommitempty"`
+	// BatchNumMessages is the maximum number of messages to be batched.
+	BatchNumMessages int `json:"batch_num_messages,ommitempty"`
+	// BatchInterval is the interval at which batched messages are flushed to disk.
+	BatchInterval bigduration.BigDuration `json:"batch_interval,ommitempty"`
+	// CompressionType allows to specify how batches are compressed.
+	CompressionType CompressionType `json:"compression_type,ommitempty"`
 }
 
 func newTopic(bl *biglog.BigLog, settings TopicSettings, defaultSettings TopicSettings) *Topic {
@@ -53,6 +59,18 @@ func newTopic(bl *biglog.BigLog, settings TopicSettings, defaultSettings TopicSe
 		settings.SegAge = defaultSettings.SegAge
 	}
 
+	if settings.BatchNumMessages == 0 {
+		settings.BatchNumMessages = defaultSettings.BatchNumMessages
+	}
+
+	if settings.BatchInterval.Duration() == 0 {
+		settings.BatchInterval = defaultSettings.BatchInterval
+	}
+
+	if settings.CompressionType == 0 {
+		settings.CompressionType = defaultSettings.CompressionType
+	}
+
 	t := &Topic{
 		settings:  settings,
 		name:      bl.Name(),
@@ -60,6 +78,11 @@ func newTopic(bl *biglog.BigLog, settings TopicSettings, defaultSettings TopicSe
 		writer:    bl,
 		scanners:  NewTopicScannerAtomicMap(),
 		streamers: NewStreamerAtomicMap(),
+	}
+
+	if settings.BatchNumMessages > 1 ||
+		settings.BatchInterval.Duration() > 0 {
+		t.writer = newMessageBuffer(bl, settings)
 	}
 
 	return t
@@ -77,6 +100,11 @@ func (t *Topic) WriteN(p []byte, n int) (written int, err error) {
 
 // Sync flushes all data to disk.
 func (t *Topic) Sync() error {
+	err := t.FlushBuffered()
+	if err != nil {
+		return err
+	}
+
 	return t.bl.Sync()
 }
 
@@ -111,6 +139,23 @@ func (t *Topic) Info() (i *TopicInfo, err error) {
 	}
 
 	return inf, nil
+}
+
+// interface to flush bufio.Writer
+type ioFlusher interface {
+	Flush() error
+}
+
+// FlushBuffered flushes all buffered messages into the BigLog.
+// Notice that the BigLog might have a buffer on it's own that this
+// function does not flush, so calling this does not mean the data
+// has been stored on disk.
+func (t *Topic) FlushBuffered() error {
+	if flusher, ok := t.writer.(ioFlusher); ok {
+		return flusher.Flush()
+	}
+
+	return nil
 }
 
 // CheckSegments is called by the runner and discards

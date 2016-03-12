@@ -126,7 +126,6 @@ func (nl *NetLog) loadTopic(name string) (err error) {
 	dec.Decode(&settings)
 
 	t := newTopic(bl, settings, nl.topicSettings)
-	t.writer = bl
 	return nl.register(name, t)
 }
 
