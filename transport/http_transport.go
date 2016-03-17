@@ -43,6 +43,7 @@ func (ht *HTTPTransport) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	router.POST("/:topic/scanner", ht.handleCreateScanner)
 	router.DELETE("/:topic/scanner", ht.handleDeleteScanner)
 	router.GET("/:topic/scan", withCtx(ht.handleScanTopic))
+	router.GET("/:topic/check", withCtx(ht.handleCheckTopic))
 	router.DELETE("/:topic", ht.handleDeleteTopic)
 	router.ServeHTTP(w, r)
 	return
@@ -287,6 +288,33 @@ func (ht *HTTPTransport) handleDeleteScanner(w http.ResponseWriter, r *http.Requ
 	}
 
 	JSONOKResponse(w, "scanner deleted")
+}
+
+func (ht *HTTPTransport) handleCheckTopic(ctx context.Context, w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
+	t, err := ht.nl.Topic(ps.ByName("topic"))
+	if err != nil {
+		JSONErrorResponse(w, err)
+		return
+	}
+
+	from, err := t.ParseOffset(r.URL.Query().Get("from"))
+	if err != nil {
+		JSONErrorResponse(w, netlog.ErrBadRequest)
+		return
+	}
+
+	iErrs, err := t.CheckIntegrity(ctx, from)
+	if err != nil {
+		JSONErrorResponse(w, netlog.ErrBadRequest)
+		return
+	}
+
+	if len(iErrs) == 0 {
+		JSONOKResponse(w, "topic healthy")
+		return
+	}
+
+	JSONResponse(w, iErrs)
 }
 
 // IDMsg is the standard response when returning an ID
