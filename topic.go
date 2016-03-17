@@ -315,7 +315,11 @@ func (t *Topic) DeleteScanner(ID string) (err error) {
 func (t *Topic) ParseOffset(str string) (int64, error) {
 	str = strings.ToLower(str)
 
-	if str == "beginning" || str == "first" || str == "oldest" || str == "start" {
+	if str == "" ||
+		str == "beginning" ||
+		str == "first" ||
+		str == "oldest" ||
+		str == "start" {
 		return t.bl.Oldest(), nil
 	}
 
@@ -323,7 +327,7 @@ func (t *Topic) ParseOffset(str string) (int64, error) {
 		return t.bl.Latest(), nil
 	}
 
-	if str == "end" || str == "now" || str == "" {
+	if str == "end" || str == "now" {
 		return t.bl.Latest() + 1, nil
 	}
 

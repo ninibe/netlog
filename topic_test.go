@@ -62,7 +62,7 @@ func TestParseOffset(t *testing.T) {
 		{"latest", 19, nil},
 		{"end", 20, nil},
 		{"now", 20, nil},
-		{"", 20, nil},
+		{"", 0, nil},
 		{"2a2", -1, ErrInvalidOffset},
 		{"1s", 10, nil},
 		{"10s", 0, nil},

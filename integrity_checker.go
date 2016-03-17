@@ -47,17 +47,6 @@ type IntegrityChecker struct {
 
 // NewIntegrityChecker creates a new integrity checker for a given topic.
 func NewIntegrityChecker(t *Topic, from int64) (*IntegrityChecker, error) {
-
-	// Interprete 0 as t
-	if from == 0 {
-		info, err := t.Info()
-		if err != nil {
-			return nil, err
-		}
-
-		from = info.FirstOffset
-	}
-
 	sc, err := biglog.NewScanner(t.bl, from)
 	if err != nil {
 		return nil, err
