@@ -14,6 +14,7 @@ import (
 
 	"github.com/comail/go-uuid/uuid"
 	"github.com/ninibe/bigduration"
+	"golang.org/x/net/context"
 
 	"github.com/ninibe/netlog/biglog"
 )
@@ -344,4 +345,20 @@ func (t *Topic) ParseOffset(str string) (int64, error) {
 	}
 
 	return offset, nil
+}
+
+// CheckIntegrity scans the topic and checks for inconsistencies in the data
+func (t *Topic) CheckIntegrity(ctx context.Context, from int64) ([]*IntegrityError, error) {
+	log.Printf("info: checking integrity of topic %q", t.Name())
+
+	ic, err := NewIntegrityChecker(t, from)
+	if err != nil {
+		return nil, ExtErr(err)
+	}
+
+	defer ic.Close()
+	errors := ic.Check(ctx)
+
+	log.Printf("info: integrity check finished for topic %q", t.Name())
+	return errors, nil
 }
