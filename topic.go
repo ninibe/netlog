@@ -361,8 +361,8 @@ func (t *Topic) CheckIntegrity(ctx context.Context, from int64) ([]*IntegrityErr
 	}
 
 	defer ic.Close()
-	errors := ic.Check(ctx)
+	iErrs := ic.Check(ctx)
 
-	log.Printf("info: integrity check finished for topic %q", t.Name())
-	return errors, nil
+	log.Printf("info: integrity check finished for topic %q. Found %d errors.", t.Name(), len(iErrs))
+	return iErrs, nil
 }

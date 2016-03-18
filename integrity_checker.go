@@ -65,13 +65,13 @@ func (ic *IntegrityChecker) Check(ctx context.Context) (errors []*IntegrityError
 
 		select {
 		case <-ctx.Done():
-			break
+			return errors
 		default:
 		}
 
 		m, o, d, err := ic.scan()
 		if err == ErrEndOfTopic {
-			break
+			return errors
 		}
 
 		if err != nil {
@@ -91,8 +91,6 @@ func (ic *IntegrityChecker) Check(ctx context.Context) (errors []*IntegrityError
 			errors = append(errors, iErr)
 		}
 	}
-
-	return errors
 }
 
 // CheckMessageIntegrity checks the integrity of a single message
@@ -111,7 +109,7 @@ func CheckMessageIntegrity(m Message, delta int) *IntegrityError {
 			ODelta:   delta,
 			Type:     IntegrityLengthErr,
 			Expected: strconv.Itoa(int(m.PLength())),
-			Actual:   strconv.Itoa(int(len(m.Payload()))),
+			Actual:   strconv.Itoa(len(m.Payload())),
 		}
 	}
 
