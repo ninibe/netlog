@@ -7,6 +7,7 @@ package netlog
 import (
 	"sync"
 	"testing"
+	"time"
 
 	"github.com/ninibe/bigduration"
 )
@@ -57,6 +58,42 @@ func TestMessageBuffer(t *testing.T) {
 	}
 }
 
+func TestMessageBufferFlusher(t *testing.T) {
+	t.Parallel()
+
+	interval := "500ms"
+	bd, _ := bigduration.ParseBigDuration(interval)
+	nw := &testNWriter{}
+
+	mb := newMessageBuffer(nw, TopicSettings{
+		BatchInterval:    bd,
+		BatchNumMessages: 100000, // something unreachable
+		CompressionType:  CompressionGzip,
+	})
+
+	// Give the flusher a head start
+	time.Sleep(bd.Duration() / 2)
+
+	batchSize := 5
+	for i := 1; i <= batchSize; i++ {
+		_, err := mb.Write([]byte("foo"))
+		if err != nil {
+			t.Errorf("Failed to write to message buffer %s", err)
+		}
+	}
+
+	if nw.Writes() != 0 {
+		t.Errorf("Message buffer flushed ahead of time")
+	}
+
+	// wait for flusher to kick in
+	time.Sleep(bd.Duration())
+
+	if nw.Writes() != 1 {
+		t.Errorf("Message buffer not flushed in time")
+	}
+}
+
 type testNWriter struct {
 	mutex   sync.Mutex
 	writes  int
@@ -71,4 +108,11 @@ func (nw *testNWriter) WriteN(p []byte, n int) (written int, err error) {
 	nw.data = append(nw.data, p)
 	nw.mutex.Unlock()
 	return len(p), nil
+}
+
+func (nw *testNWriter) Writes() int {
+	nw.mutex.Lock()
+	defer nw.mutex.Unlock()
+
+	return nw.writes
 }
