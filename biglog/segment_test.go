@@ -150,6 +150,6 @@ func TestHealthCheckPartialWrite(t *testing.T) {
 	seg.dataFile.Seek(0, 0)
 	data, err = ioutil.ReadAll(seg.dataFile)
 	if string(data) != "sometestdata" {
-		t.Error("data file not corrected from partial write, data: %s", data)
+		t.Errorf("data file not corrected from partial write, data: %s", data)
 	}
 }
