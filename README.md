@@ -17,7 +17,7 @@ To peek at the internals start with [BigLog](https://github.com/ninibe/netlog/tr
 
 ### Getting started
 
-While posting a fetching single messages provides low performance, it's the simples way to get started using nothing but simple curl commands.
+While posting and fetching single messages is very inefficient, it's the simplest way to get started using nothing but curl commands.
 
 ```bash
 # compile server
@@ -52,7 +52,7 @@ curl -XGET "localhost:7200/demo/scan?id=$SC&wait=5s"
 # wait 5 minutes
 curl -XGET "localhost:7200/demo/scan?id=$SC&wait=5m"
 
-# post more messages in another winder
+# post more messages in another window
 curl -XPOST localhost:7200/demo/payload --data-binary "message number four"
 curl -XPOST localhost:7200/demo/payload --data-binary "message number five"
 
