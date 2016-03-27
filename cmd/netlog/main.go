@@ -27,7 +27,7 @@ var (
 	segSize       = flag.Int64("segment_size", 1024*1024*1024, "Maximum topic segment size in bytes")
 	batchNum      = flag.Int("batch_num_messages", 100, "Default maximum number of messages to be batched")
 	batchInterval = flag.String("batch_interval", "200ms", "Default interval at which batched messages are flushed to disk.")
-	compression   = flag.Int("compression", 1, "Default compression for batches: 0 = none, 1 = gzip, 2 = snappy")
+	compression   = flag.Int("compression", 1, "Default compression for batches: 1 = gzip, 2 = snappy, 3 = none")
 )
 
 func main() {
