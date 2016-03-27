@@ -65,8 +65,8 @@ func TestTopicIntegrity(t *testing.T) {
 			enc.PutUint32(msgs[k][crc32Pos:crc32Pos+4], uint32(20))
 		}
 
-		_, err := topic.Write(msgs[k])
-		panicOn(err)
+		_, err2 := topic.Write(msgs[k])
+		panicOn(err2)
 	}
 
 	iErrs, err := topic.CheckIntegrity(context.Background(), 0)
