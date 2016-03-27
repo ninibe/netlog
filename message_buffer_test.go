@@ -15,10 +15,10 @@ import (
 func TestMessageBuffer(t *testing.T) {
 	t.Parallel()
 
-	// TODO add CompressionNone when supported
 	comps := []CompressionType{
 		CompressionGzip,
 		CompressionSnappy,
+		CompressionNone,
 	}
 
 	for _, comp := range comps {

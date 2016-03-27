@@ -68,7 +68,7 @@ func newTopic(bl *biglog.BigLog, settings TopicSettings, defaultSettings TopicSe
 		settings.BatchInterval = defaultSettings.BatchInterval
 	}
 
-	if settings.CompressionType == 0 {
+	if settings.CompressionType == CompressionDefault {
 		settings.CompressionType = defaultSettings.CompressionType
 	}
 

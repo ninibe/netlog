@@ -25,12 +25,14 @@ const (
 type CompressionType uint8
 
 const (
-	// CompressionNone is used by single messages
-	CompressionNone CompressionType = 0
+	// CompressionDefault is used when falling back to the default compression of the system.
+	CompressionDefault CompressionType = 0
+	// CompressionNone is used by messages sets with uncompressed payloads
+	CompressionNone CompressionType = 1
 	// CompressionGzip is used by message sets with gzipped payloads
-	CompressionGzip CompressionType = 1
+	CompressionGzip CompressionType = 2
 	// CompressionSnappy is used by message sets with snappy payloads
-	CompressionSnappy CompressionType = 2
+	CompressionSnappy CompressionType = 3
 )
 
 // MessageFromPayload returns a message with the appropriate calculated headers from a give data payload.
@@ -48,16 +50,14 @@ func MessageFromPayload(p []byte) Message {
 // MessageSet will panic if a compression type is not provided, since nothing would indicate to streaming
 // clients that further messages are embedded in the payload.
 func MessageSet(msgs []Message, comp CompressionType) Message {
-
-	if comp == CompressionNone {
-		panic("can not generate message-set without compression")
-	}
-
 	// TODO buffer pool?
 	buf := &bytes.Buffer{}
 	var w io.WriteCloser
 
 	switch comp {
+	case CompressionNone:
+		w = NopWCloser(buf)
+
 	case CompressionGzip:
 		w = gzip.NewWriter(buf)
 
@@ -208,3 +208,15 @@ func unpack(data []byte, comp CompressionType) (msgs []Message, err error) {
 
 	return msgs, err
 }
+
+// NopWCloser returns a WriteCloser with a no-op
+// Close method wrapping the provided Writer w.
+func NopWCloser(w io.Writer) io.WriteCloser {
+	return nopWCloser{w}
+}
+
+type nopWCloser struct {
+	io.Writer
+}
+
+func (nopWCloser) Close() error { return nil }
