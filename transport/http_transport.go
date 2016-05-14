@@ -265,7 +265,7 @@ func (ht *HTTPTransport) handleCreateScanner(w http.ResponseWriter, r *http.Requ
 	}
 
 	w.WriteHeader(http.StatusCreated)
-	JSONResponse(w, IDMsg{ID: ts.ID})
+	JSONResponse(w, ts.Info())
 }
 
 func (ht *HTTPTransport) handleDeleteScanner(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {

@@ -1,5 +1,5 @@
 // generated file - DO NOT EDIT
-// command: atomicmapper -pointer -type TopicScanner
+// command: atomicmapper -type TopicScanner
 
 package netlog
 
@@ -8,13 +8,13 @@ import (
 	"sync/atomic"
 )
 
-// TopicScannerAtomicMap is a copy-on-write thread-safe map of pointers to TopicScanner
+// TopicScannerAtomicMap is a copy-on-write thread-safe map of TopicScanner
 type TopicScannerAtomicMap struct {
 	mu  sync.Mutex
 	val atomic.Value
 }
 
-type _TopicScannerMap map[string]*TopicScanner
+type _TopicScannerMap map[string]TopicScanner
 
 // NewTopicScannerAtomicMap returns a new initialized TopicScannerAtomicMap
 func NewTopicScannerAtomicMap() *TopicScannerAtomicMap {
@@ -23,16 +23,16 @@ func NewTopicScannerAtomicMap() *TopicScannerAtomicMap {
 	return am
 }
 
-// Get returns a pointer to TopicScanner for a given key
-func (am *TopicScannerAtomicMap) Get(key string) (value *TopicScanner, ok bool) {
+// Get returns a TopicScanner for a given key
+func (am *TopicScannerAtomicMap) Get(key string) (value TopicScanner, ok bool) {
 	value, ok = am.val.Load().(_TopicScannerMap)[key]
 	return value, ok
 }
 
-// GetAll returns the underlying map of pointers to TopicScanner
+// GetAll returns the underlying map of TopicScanner
 // this map must NOT be modified, to change the map safely use the Set and Delete
 // functions and Get the value again
-func (am *TopicScannerAtomicMap) GetAll() map[string]*TopicScanner {
+func (am *TopicScannerAtomicMap) GetAll() map[string]TopicScanner {
 	return am.val.Load().(_TopicScannerMap)
 }
 
@@ -41,8 +41,8 @@ func (am *TopicScannerAtomicMap) Len() int {
 	return len(am.val.Load().(_TopicScannerMap))
 }
 
-// Set inserts in the map a pointer to TopicScanner under a given key
-func (am *TopicScannerAtomicMap) Set(key string, value *TopicScanner) {
+// Set inserts in the map a TopicScanner under a given key
+func (am *TopicScannerAtomicMap) Set(key string, value TopicScanner) {
 	am.mu.Lock()
 	defer am.mu.Unlock()
 
@@ -57,7 +57,7 @@ func (am *TopicScannerAtomicMap) Set(key string, value *TopicScanner) {
 	return
 }
 
-// Delete removes the pointer to TopicScanner under key from the map
+// Delete removes the TopicScanner under key from the map
 func (am *TopicScannerAtomicMap) Delete(key string) {
 	am.mu.Lock()
 	defer am.mu.Unlock()

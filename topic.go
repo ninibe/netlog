@@ -12,7 +12,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/comail/go-uuid/uuid"
 	"github.com/ninibe/bigduration"
 	"golang.org/x/net/context"
 
@@ -24,7 +23,7 @@ const settingsFile = "settings.json"
 var enc = binary.BigEndian
 
 //go:generate atomicmapper -pointer -type Topic
-//go:generate atomicmapper -pointer -type TopicScanner
+//go:generate atomicmapper -type TopicScanner
 
 // Topic is a log of linear messages.
 type Topic struct {
@@ -256,7 +255,7 @@ func (t *Topic) Payload(offset int64) ([]byte, error) {
 }
 
 // CreateScanner creates a new scanner starting at offset `from`.
-func (t *Topic) CreateScanner(from int64) (ts *TopicScanner, err error) {
+func (t *Topic) CreateScanner(from int64) (ts TopicScanner, err error) {
 	defer func() {
 		if err != nil {
 			log.Printf("warn: failed to create scanner %s:%d err: %s", t.Name(), from, err)
@@ -264,26 +263,26 @@ func (t *Topic) CreateScanner(from int64) (ts *TopicScanner, err error) {
 	}()
 
 	log.Printf("info: creating scanner from offset %d", from)
-	ts, err = NewTopicScanner(t.bl, from)
+	ts, err = NewBLTopicScanner(t.bl, from)
 	if ts == nil || err != nil {
 		return ts, ExtErr(err)
 	}
 
-	ts.ID = uuid.New()
-	t.scanners.Set(ts.ID, ts)
+	// register scanner in this topic
+	t.scanners.Set(ts.Info().ID, ts)
 
-	log.Printf("info: created scanner %s from %s:%d", ts.ID, t.Name(), from)
+	log.Printf("info: created scanner from %s:%d", t.Name(), from)
 	return ts, nil
 }
 
 // Scanner returns an existing scanner for the topic given and ID
 // or ErrScannerNotFound if it doesn't exists.
-func (t *Topic) Scanner(ID string) (bs *TopicScanner, err error) {
-	bs, ok := t.scanners.Get(ID)
+func (t *Topic) Scanner(ID string) (ts TopicScanner, err error) {
+	ts, ok := t.scanners.Get(ID)
 	if !ok {
 		return nil, ErrScannerNotFound
 	}
-	return bs, nil
+	return ts, nil
 }
 
 // DeleteScanner removes the scanner from the topic

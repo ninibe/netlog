@@ -7,6 +7,7 @@ package netlog
 import (
 	"sync"
 
+	"github.com/comail/go-uuid/uuid"
 	"golang.org/x/net/context"
 
 	"github.com/ninibe/netlog/biglog"
@@ -15,43 +16,50 @@ import (
 // TopicScanner reads one by one over the messages in a topic
 // blocking until new data is available for a period of time.
 // TopicScanners are thread-safe.
-type TopicScanner struct {
-	ID string
+type TopicScanner interface {
+	Scan(ctx context.Context) (m Message, offset int64, err error)
+	Info() TScannerInfo
+	Close() error
+}
 
+// BLTopicScanner implements TopicScanner reading from BigLog.
+type BLTopicScanner struct {
 	mu       sync.RWMutex
+	ID       string
 	start    int64
-	offset   int64
+	last     int64
 	messages []Message
 
 	sc *biglog.Scanner
 	wc *biglog.Watcher
 }
 
-// NewTopicScanner returns a new topic scanner on a given BigLog from a given 'from' offset.
-func NewTopicScanner(bl *biglog.BigLog, from int64) (ts *TopicScanner, err error) {
+// NewBLTopicScanner returns a new topic scanner on a given BigLog from a given 'from' offset.
+func NewBLTopicScanner(bl *biglog.BigLog, from int64) (bts *BLTopicScanner, err error) {
 	if bl == nil {
 		return nil, biglog.ErrInvalid
 	}
 
 	sc, err := biglog.NewScanner(bl, from)
 
-	ts = &TopicScanner{
-		start:  from,
-		offset: -1,
-		sc:     sc,
-		wc:     biglog.NewWatcher(bl),
+	bts = &BLTopicScanner{
+		ID:    uuid.New(),
+		start: from,
+		last:  -1,
+		sc:    sc,
+		wc:    biglog.NewWatcher(bl),
 	}
 
 	// auto-scan forward if embedded offset
 	if err == biglog.ErrEmbeddedOffset {
-		err = ts.scanForward(from)
+		err = bts.scanForward(from)
 	}
 
-	return ts, err
+	return bts, err
 }
 
 // scans in a loop until the next offset is the target offset
-func (ts *TopicScanner) scanForward(target int64) (err error) {
+func (ts *BLTopicScanner) scanForward(target int64) (err error) {
 	ctx := context.Background()
 	var offset int64
 	for {
@@ -72,7 +80,7 @@ func (ts *TopicScanner) scanForward(target int64) (err error) {
 // Scan advances the Scanner to the next message, returning the message and the offset.
 // Scan will block when it reaches EOF until there is more data available,
 // the user must provide a context to cancel the request when it needs to stop waiting.
-func (ts *TopicScanner) Scan(ctx context.Context) (m Message, offset int64, err error) {
+func (ts *BLTopicScanner) Scan(ctx context.Context) (m Message, offset int64, err error) {
 	ts.mu.Lock()
 	defer ts.mu.Unlock()
 
@@ -81,9 +89,9 @@ func (ts *TopicScanner) Scan(ctx context.Context) (m Message, offset int64, err 
 		//  from a set return one of those
 		if len(ts.messages) > 0 {
 			m = ts.messages[0]
-			offset = ts.offset
+			offset = ts.last
 
-			ts.offset++
+			ts.last++
 			ts.messages = ts.messages[1:]
 
 			return m, offset, nil
@@ -92,11 +100,11 @@ func (ts *TopicScanner) Scan(ctx context.Context) (m Message, offset int64, err 
 		// scan a new entry
 		ok := ts.scan(ctx)
 		if ok {
-			ts.offset = ts.sc.Offset()
+			ts.last = ts.sc.Offset()
 
 			// if it's got only one message return it
 			if ts.sc.ODelta() == 1 {
-				return Message(ts.sc.Bytes()), ts.offset, nil
+				return Message(ts.sc.Bytes()), ts.last, nil
 			}
 
 			// unpack message-set into buffer
@@ -115,7 +123,7 @@ func (ts *TopicScanner) Scan(ctx context.Context) (m Message, offset int64, err 
 	return nil, -1, ErrEndOfTopic
 }
 
-func (ts *TopicScanner) scan(ctx context.Context) bool {
+func (ts *BLTopicScanner) scan(ctx context.Context) bool {
 	for {
 		ok := ts.sc.Scan()
 
@@ -140,16 +148,16 @@ func (ts *TopicScanner) scan(ctx context.Context) bool {
 	}
 }
 
-// Offset returns the offset of the last scanned message.
-func (ts *TopicScanner) Offset() int64 {
+// Last returns the offset of the last scanned message.
+func (ts *BLTopicScanner) Last() int64 {
 	ts.mu.RLock()
 	defer ts.mu.RUnlock()
 
-	return ts.offset
+	return ts.last
 }
 
 // Start returns the offset of the first scanned message.
-func (ts *TopicScanner) Start() int64 {
+func (ts *BLTopicScanner) Start() int64 {
 	ts.mu.RLock()
 	defer ts.mu.RUnlock()
 
@@ -157,7 +165,7 @@ func (ts *TopicScanner) Start() int64 {
 }
 
 // Close implements io.Closer and releases the TopicScanner resources.
-func (ts *TopicScanner) Close() error {
+func (ts *BLTopicScanner) Close() error {
 	if err := ts.sc.Close(); err != nil {
 		return err
 	}
@@ -167,17 +175,20 @@ func (ts *TopicScanner) Close() error {
 
 // TScannerInfo holds the scanner's offset information
 type TScannerInfo struct {
-	Start int64 `json:"start"`
-	Last  int64 `json:"last"`
+	ID      string `json:"id"`
+	Start   int64  `json:"start"`
+	Last    int64  `json:"last"`
+	Persist bool   `json:"persistent"`
 }
 
 // Info returns a TScannerInfo struct with the scanner's
 // original starting offset and the last scanned one
-func (ts *TopicScanner) Info() TScannerInfo {
+func (ts *BLTopicScanner) Info() TScannerInfo {
 	ts.mu.RLock()
 	defer ts.mu.RUnlock()
 	return TScannerInfo{
+		ID:    ts.ID,
 		Start: ts.start,
-		Last:  ts.offset,
+		Last:  ts.last,
 	}
 }
