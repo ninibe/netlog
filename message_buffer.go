@@ -69,7 +69,13 @@ func (m *messageBuffer) flush() (err error) {
 		m.buffered = 0
 	}()
 
-	data := MessageSet(m.buff[:m.buffered], m.comp)
+	var data Message
+	if m.buffered == 1 {
+		data = m.buff[0]
+	} else {
+		data = MessageSet(m.buff[:m.buffered], m.comp)
+	}
+
 	_, err = m.writer.WriteN(data.Bytes(), m.buffered)
 	return err
 }
