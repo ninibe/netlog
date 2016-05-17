@@ -119,10 +119,11 @@ func Open(dirPath string) (bl *BigLog, err error) {
 		return nil, ErrInvalid
 	}
 
+	dirPath, _ = filepath.Abs(dirPath)
 	bl = &BigLog{
 		name:    filepath.Base(dirPath),
-		segs:    make([]*segment, 0),
 		dirPath: dirPath,
+		segs:    make([]*segment, 0),
 	}
 
 	// initialize hot segment type for atomic load
@@ -161,6 +162,14 @@ func (bl *BigLog) segments() []*segment {
 	var segs = bl.segs
 	bl.mu.RUnlock()
 	return segs
+}
+
+// DirPath returns the absolute path to
+// the folder with the BigLog's files
+func (bl *BigLog) DirPath() string {
+	bl.mu.Lock()
+	defer bl.mu.Unlock()
+	return bl.dirPath
 }
 
 // Write writes bytes to the current active segment

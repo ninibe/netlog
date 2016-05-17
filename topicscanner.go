@@ -5,28 +5,50 @@
 package netlog
 
 import (
+	"fmt"
+	"log"
+	"os"
+	"path/filepath"
 	"sync"
 
-	"github.com/comail/go-uuid/uuid"
 	"golang.org/x/net/context"
 
 	"github.com/ninibe/netlog/biglog"
 )
 
+// file name structure for persisted scanners
+var scannerPattern = "%36s.scanner"
+
 // TopicScanner reads one by one over the messages in a topic
 // blocking until new data is available for a period of time.
 // TopicScanners are thread-safe.
 type TopicScanner interface {
+	ID() string
 	Scan(ctx context.Context) (m Message, offset int64, err error)
 	Info() TScannerInfo
 	Close() error
 }
 
+// NewTopicScanner returns a new topic scanner ready to scan starting at offset `from`,
+// if persist is true, the scanner and it's last position will survive across server restarts
+func NewTopicScanner(t *Topic, ID string, from int64, persist bool) (TopicScanner, error) {
+	bts, err := newBLTopicScanner(t, ID, from)
+	if err != nil {
+		return nil, ExtErr(err)
+	}
+
+	if !persist {
+		return bts, nil
+	}
+
+	return newPersistentTopicScanner(t, bts)
+}
+
 // BLTopicScanner implements TopicScanner reading from BigLog.
 type BLTopicScanner struct {
 	mu       sync.RWMutex
-	ID       string
-	start    int64
+	_ID      string
+	topic    *Topic
 	last     int64
 	messages []Message
 
@@ -34,20 +56,19 @@ type BLTopicScanner struct {
 	wc *biglog.Watcher
 }
 
-// NewBLTopicScanner returns a new topic scanner on a given BigLog from a given 'from' offset.
-func NewBLTopicScanner(bl *biglog.BigLog, from int64) (bts *BLTopicScanner, err error) {
-	if bl == nil {
-		return nil, biglog.ErrInvalid
+// NewBLTopicScanner returns a new topic scanner ready to scan starting at offset `from`
+func newBLTopicScanner(t *Topic, ID string, from int64) (bts *BLTopicScanner, err error) {
+	sc, err := biglog.NewScanner(t.bl, from)
+	if err != nil && err != biglog.ErrEmbeddedOffset {
+		return nil, err
 	}
 
-	sc, err := biglog.NewScanner(bl, from)
-
 	bts = &BLTopicScanner{
-		ID:    uuid.New(),
-		start: from,
+		_ID:   ID,
+		topic: t,
 		last:  -1,
 		sc:    sc,
-		wc:    biglog.NewWatcher(bl),
+		wc:    biglog.NewWatcher(t.bl),
 	}
 
 	// auto-scan forward if embedded offset
@@ -148,20 +169,12 @@ func (ts *BLTopicScanner) scan(ctx context.Context) bool {
 	}
 }
 
-// Last returns the offset of the last scanned message.
-func (ts *BLTopicScanner) Last() int64 {
+// ID returns the ID of the scanner
+func (ts *BLTopicScanner) ID() string {
 	ts.mu.RLock()
 	defer ts.mu.RUnlock()
 
-	return ts.last
-}
-
-// Start returns the offset of the first scanned message.
-func (ts *BLTopicScanner) Start() int64 {
-	ts.mu.RLock()
-	defer ts.mu.RUnlock()
-
-	return ts.start
+	return ts._ID
 }
 
 // Close implements io.Closer and releases the TopicScanner resources.
@@ -176,19 +189,123 @@ func (ts *BLTopicScanner) Close() error {
 // TScannerInfo holds the scanner's offset information
 type TScannerInfo struct {
 	ID      string `json:"id"`
-	Start   int64  `json:"start"`
+	Next    int64  `json:"next"`
 	Last    int64  `json:"last"`
 	Persist bool   `json:"persistent"`
 }
 
 // Info returns a TScannerInfo struct with the scanner's
-// original starting offset and the last scanned one
+// next offset and the last scanned one
 func (ts *BLTopicScanner) Info() TScannerInfo {
 	ts.mu.RLock()
 	defer ts.mu.RUnlock()
+
+	next := ts.last + 1
+	oldest := ts.topic.bl.Oldest()
+	if oldest > next {
+		next = oldest
+	}
+
 	return TScannerInfo{
-		ID:    ts.ID,
-		Start: ts.start,
-		Last:  ts.last,
+		ID:   ts._ID,
+		Next: next,
+		Last: ts.last,
+	}
+}
+
+// newPersistentTopicScanner returns a new topic scanner wrapper which will persist the scanners state
+func newPersistentTopicScanner(t *Topic, ts TopicScanner) (*PersistentTopicScanner, error) {
+
+	err := os.MkdirAll(t.readersDir(), 0755)
+	if err != nil {
+		log.Printf("error: %s", err)
+		return nil, ErrInvalidDir
+	}
+
+	fname := fmt.Sprintf(scannerPattern, ts.ID())
+	fpath := filepath.Join(t.readersDir(), fname)
+
+	f, err := os.OpenFile(fpath, os.O_RDWR|os.O_CREATE, 0666)
+	if err != nil {
+		log.Printf("error: %s", err)
+		return nil, ErrInvalidDir
+	}
+
+	pts := &PersistentTopicScanner{
+		f:     f,
+		fpath: fpath,
+		ts:    ts,
+		oc:    make(chan int64, 100),
+	}
+
+	go pts.persist()
+	return pts, nil
+}
+
+// PersistentTopicScanner synchronizes the underlying
+// scanner state to a given writer
+type PersistentTopicScanner struct {
+	f     *os.File
+	fpath string
+	ts    TopicScanner
+	oc    chan int64
+}
+
+// ID the ID of the scanner
+func (p *PersistentTopicScanner) ID() string {
+	return p.ts.ID()
+}
+
+// Scan offloads the actual scan to the underlying scanner while updates the last read offset
+func (p *PersistentTopicScanner) Scan(ctx context.Context) (m Message, offset int64, err error) {
+	m, offset, err = p.ts.Scan(ctx)
+	if offset < 0 {
+		return m, offset, err
+	}
+
+	select {
+	case p.oc <- offset:
+	default:
+	}
+
+	return m, offset, err
+}
+
+// Info returns a TScannerInfo struct with the scanner's
+// next offset and the last scanned one
+func (p *PersistentTopicScanner) Info() TScannerInfo {
+	i := p.ts.Info()
+	i.Persist = true
+	return i
+}
+
+// Close deletes the offset tracking file, closes the
+// offset channel and closes the underlying scanner
+func (p *PersistentTopicScanner) Close() error {
+	err := os.Remove(p.fpath)
+	if err != nil {
+		log.Printf("error: can't remove %s: %s", p.fpath, err)
+		return err
+	}
+
+	close(p.oc)
+	return p.ts.Close()
+}
+
+func (p *PersistentTopicScanner) persist() {
+	buf := make([]byte, 8)
+	for {
+		select {
+		case o, ok := <-p.oc:
+			if !ok {
+				return // channel closed
+			}
+
+			enc.PutUint64(buf, uint64(o))
+			_, err := p.f.WriteAt(buf, 0)
+			if err != nil {
+				log.Printf("error: failed to persist topic scanner %s: %s", p.ts.Info().ID, err)
+			}
+		}
 	}
 }

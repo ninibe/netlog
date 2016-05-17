@@ -258,7 +258,8 @@ func (ht *HTTPTransport) handleCreateScanner(w http.ResponseWriter, r *http.Requ
 		return
 	}
 
-	ts, err := t.CreateScanner(from)
+	persist := trueStr(r.URL.Query().Get("persist"))
+	ts, err := t.NewScanner(from, persist)
 	if err != nil {
 		JSONErrorResponse(w, err)
 		return

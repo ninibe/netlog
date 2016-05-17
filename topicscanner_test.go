@@ -46,7 +46,7 @@ func TestTopicScanner(t *testing.T) {
 		output = append(output, messages...)
 	}
 
-	ts, err := topic.CreateScanner(0)
+	ts, err := topic.NewScanner(0, false)
 	panicOn(err)
 
 	ctx, _ := context.WithTimeout(context.Background(), time.Minute)
@@ -70,11 +70,13 @@ func TestTopicScanner(t *testing.T) {
 	// Offset 3 is embedded in the message-set and should have
 	// the same value as message 2 in said message-set, since
 	// there is a first extra message
-	ts2, err := topic.CreateScanner(3)
-	data, offset, err := ts2.Scan(ctx)
+	ts2, err := topic.NewScanner(3, false)
 	if err != nil {
-		t.Error(err)
+		t.Fatal(err)
 	}
+
+	data, offset, err := ts2.Scan(ctx)
+	panicOn(err)
 
 	if offset != 3 {
 		t.Errorf("Invalid scanned offset %d vs expected %d", offset, 3)

@@ -6,8 +6,12 @@ package netlog
 
 import (
 	"encoding/binary"
+	"fmt"
 	"io"
+	"io/ioutil"
 	"log"
+	"os"
+	"path/filepath"
 	"strconv"
 	"strings"
 	"time"
@@ -15,6 +19,7 @@ import (
 	"github.com/ninibe/bigduration"
 	"golang.org/x/net/context"
 
+	"github.com/comail/go-uuid/uuid"
 	"github.com/ninibe/netlog/biglog"
 )
 
@@ -85,6 +90,7 @@ func newTopic(bl *biglog.BigLog, settings TopicSettings, defaultSettings TopicSe
 		t.writer = newMessageBuffer(bl, settings)
 	}
 
+	t.restorePersistedReaders()
 	return t
 }
 
@@ -265,16 +271,26 @@ func (t *Topic) Payload(offset int64) ([]byte, error) {
 	return msg.Payload(), nil
 }
 
-// CreateScanner creates a new scanner starting at offset `from`.
-func (t *Topic) CreateScanner(from int64) (ts TopicScanner, err error) {
+// NewScanner creates a new scanner starting at offset `from`. If `persist` is true,
+// the scanner and it's state will survive server restarts
+func (t *Topic) NewScanner(from int64, persist bool) (ts TopicScanner, err error) {
+	return t.createScanner(uuid.New(), from, persist)
+}
+
+func (t *Topic) createScanner(ID string, from int64, persist bool) (ts TopicScanner, err error) {
 	defer func() {
 		if err != nil {
 			log.Printf("warn: failed to create scanner %s:%d err: %s", t.Name(), from, err)
 		}
 	}()
 
+	if from < 0 {
+		log.Printf("warn: can't create scanner from negative offset %d", from)
+		return nil, ErrInvalidOffset
+	}
+
 	log.Printf("info: creating scanner from offset %d", from)
-	ts, err = NewBLTopicScanner(t.bl, from)
+	ts, err = NewTopicScanner(t, ID, from, persist)
 	if ts == nil || err != nil {
 		return ts, ExtErr(err)
 	}
@@ -305,11 +321,12 @@ func (t *Topic) DeleteScanner(ID string) (err error) {
 	}()
 
 	log.Printf("info: deleting scanner %s from %q", ID, t.Name())
-	_, ok := t.scanners.Get(ID)
+	sc, ok := t.scanners.Get(ID)
 	if !ok {
 		return ErrScannerNotFound
 	}
 
+	sc.Close()
 	t.scanners.Delete(ID)
 
 	log.Printf("info: deleted scanner %s from %q", ID, t.Name())
@@ -375,4 +392,68 @@ func (t *Topic) CheckIntegrity(ctx context.Context, from int64) ([]*IntegrityErr
 
 	log.Printf("info: integrity check finished for topic %q. Found %d errors.", t.Name(), len(iErrs))
 	return iErrs, nil
+}
+
+// DirPath returns the absolute path to
+// the folder with the topic's files
+func (t *Topic) DirPath() string {
+	return t.bl.DirPath()
+}
+
+func (t *Topic) scannerPath(ID string) string {
+	return filepath.Join(t.readersDir(), fmt.Sprintf(scannerPattern, ID))
+}
+
+func (t *Topic) readersDir() string {
+	return filepath.Join(t.DirPath(), "readers")
+}
+
+func (t *Topic) restorePersistedReaders() {
+	dirfs, err := ioutil.ReadDir(t.readersDir())
+	if err != nil {
+		return
+	}
+
+	var ID string
+	for _, f := range dirfs {
+		switch filepath.Ext(f.Name()) {
+		case ".scanner":
+			_, err = fmt.Sscanf(f.Name(), scannerPattern, &ID)
+			if err != nil {
+				log.Printf("error: unable to parse scanner: %s", err)
+				continue
+			}
+
+			last := offsetFromFile(t.scannerPath(ID))
+			from := last + 1
+			if last < t.bl.Oldest() {
+				from = t.bl.Oldest()
+			}
+			_, err := t.createScanner(ID, from, true)
+			if err != nil {
+				log.Printf("error: unable to restore scanner %s: %s", ID, err)
+				continue
+			}
+
+			log.Printf("info: restored scanner %s on %s:%d", ID, t.name, from)
+		default:
+			log.Printf("error: unknown file: %s", f.Name())
+		}
+	}
+}
+
+func offsetFromFile(filePath string) int64 {
+	f, err := os.Open(filePath)
+	if err != nil {
+		return -1
+	}
+
+	defer f.Close()
+
+	b, _ := ioutil.ReadAll(f)
+	if len(b) == 8 {
+		return int64(enc.Uint64(b))
+	}
+
+	return -1
 }
