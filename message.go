@@ -171,6 +171,7 @@ func unpack(data []byte, comp CompressionType) (msgs []Message, err error) {
 	var r io.Reader = bytes.NewReader(data)
 
 	switch comp {
+	case 0: // not a set
 	case CompressionNone:
 	case CompressionGzip:
 		r, err = gzip.NewReader(r)
@@ -182,7 +183,7 @@ func unpack(data []byte, comp CompressionType) (msgs []Message, err error) {
 		r = snappy.NewReader(r)
 
 	default:
-		panic("invalid compression type")
+		return nil, ErrInvalidCompression
 	}
 
 	// close reader if possible on exit

@@ -239,19 +239,30 @@ func (t *Topic) ReadFrom(r io.Reader) (n int64, err error) {
 
 // Payload is a utility method to fetch the payload of a single offset.
 func (t *Topic) Payload(offset int64) ([]byte, error) {
-	reader, _, err := biglog.NewReader(t.bl, offset)
-	if err != nil {
-		return nil, ErrInvalidOffset
+	reader, ret, err := biglog.NewReader(t.bl, offset)
+	if err != nil && err != biglog.ErrEmbeddedOffset {
+		return nil, err
 	}
 
-	// TODO unpack embedded offset
 	entry, err := ReadMessage(reader)
 	if err != nil {
 		return nil, err
 	}
 
-	// TODO check crc?
-	return entry.Payload(), nil
+	// extract list of messages out of the stored entry
+	msgs, err := Unpack(entry)
+	if err != nil {
+		return nil, err
+	}
+
+	// ret is the first offset of the returned list
+	// offset-ret = position of message within the list
+	msg := msgs[offset-ret]
+	if !msg.ChecksumOK() {
+		return nil, ErrCRC
+	}
+
+	return msg.Payload(), nil
 }
 
 // CreateScanner creates a new scanner starting at offset `from`.

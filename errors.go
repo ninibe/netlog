@@ -6,6 +6,7 @@ package netlog
 
 import (
 	"fmt"
+	"io"
 	"log"
 	"net/http"
 
@@ -51,12 +52,14 @@ var (
 	// ErrInvalidDir is returned when the data folder provided does not exists or is not writable.
 	ErrInvalidDir = newErr(http.StatusInternalServerError, "netlog: invalid data directory")
 
-	// ErrBadRequest  is returned when invalid parameters are received.
+	// ErrBadRequest is returned when invalid parameters are received.
 	ErrBadRequest = newErr(http.StatusBadRequest, "netlog: bad request")
 	// ErrInvalidOffset is returned when the requested offset can not be parsed into an number.
 	ErrInvalidOffset = newErr(http.StatusBadRequest, "netlog: invalid offset")
 	// ErrInvalidDuration is returned when a given big duration can not be parsed
 	ErrInvalidDuration = newErr(http.StatusBadRequest, "netlog: invalid duration")
+	// ErrInvalidCompression is returning when the compression type defined is unknown
+	ErrInvalidCompression = newErr(http.StatusBadRequest, "netlog: invalid compression type")
 	// ErrTopicExists is returning when trying to create an already existing topic.
 	ErrTopicExists = newErr(http.StatusBadRequest, "netlog: topic exists")
 	// ErrEndOfTopic is returned when the reader has read all the way until the end of the topic.
@@ -69,6 +72,8 @@ var (
 	// ErrOffsetNotFound is returning when the offset is no longer or not yet present in the topic.
 	ErrOffsetNotFound = newErr(http.StatusNotFound, "netlog: offset not found")
 
+	// ErrCRC is returned when a message's payload does not match's the CRC header.
+	ErrCRC = newErr(http.StatusInternalServerError, "netlog: checksum error")
 	// ErrBusy is retuning when trying to close or delete a topic with readers attached to it.
 	ErrBusy = newErr(http.StatusConflict, "netlog: resource busy")
 )
@@ -76,6 +81,7 @@ var (
 var errmap = map[error]NLError{
 	biglog.ErrBusy:     ErrBusy,
 	biglog.ErrNotFound: ErrOffsetNotFound,
+	io.EOF:             ErrEndOfTopic,
 }
 
 // ExtErr maps external errors, mostly BigLog errors to NetLog errors.
