@@ -3,17 +3,29 @@
 # NetLog
 A lightweight, HTTP-centric, log-based (Kafka-style) message queue.
 
-### Work-in-progress!
+## Work-in-progress!
+This is still experimental software potentially full of bugs.
 To peek at the internals start with [BigLog](https://github.com/ninibe/netlog/tree/master/biglog).
 
-### Initial non-goals
+### Roadmap
+
+- [x] low-level log management
+- [x] HTTP transport
+- [x] scanner based pub/sub
+- [x] custom data retention policy
+- [x] persistent scanners
+- [x] batching
+- [x] compression
+- [ ] good test coverage
+- [ ] proper documentation
+- [ ] streaming based pub/sub
+- [ ] async replication
+- [ ] kinesis-compatible transport
+- [ ] gRPC transport
+
+### Non-goals
 * Match Kafka's performance.
 * Distributed system.
-
-### Goals
-* Easy to use, curl-friendly, HTTP interface.
-* O(1) for read/write operations.
-* Master-slave asynchronous replication.
 
 ### Getting started
 
@@ -21,7 +33,7 @@ While posting and fetching single messages is very inefficient, it's the simples
 
 ```bash
 # compile server
-go install github.com/ninibe/netlog/cmd/netlog
+go get github.com/ninibe/netlog/cmd/netlog
 
 # run server
 bin/netlog
@@ -58,5 +70,24 @@ curl -XPOST localhost:7200/demo/payload --data-binary "message number five"
 
 # new scanner since 1 minute ago
 curl -XPOST "localhost:7200/demo/scanner?from=1m"
+
+```
+
+### One-line-ish pub/sub
+```bash
+# create new topic
+curl -XPOST localhost:7200/pubsubdemo
+
+# get scanner ID with jq
+export SCANNER=$(curl -s -XPOST "localhost:7200/pubsubdemo/scanner?from=0&persist=true" | jq -r .id)
+
+# subscribe to the topic
+while true; do; curl "localhost:7200/pubsubdemo/scan?id=$SCANNER&wait=1h" && echo; done
+
+# IN ANOTHER WINDOW
+
+# publish on the topic
+while true; do; read data; curl localhost:7200/pubsubdemo/payload --data-binary $data; done
+# write something and hit enter
 
 ```
