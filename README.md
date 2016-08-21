@@ -91,3 +91,6 @@ while true; do; read data; curl localhost:7200/pubsubdemo/payload --data-binary 
 # write something and hit enter
 
 ```
+
+### Contributing
+Contributions are more than welcome, check the [contributing guidelines](https://github.com/ninibe/netlog/blob/master/CONTRIBUTING.md).
