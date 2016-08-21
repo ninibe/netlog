@@ -294,18 +294,11 @@ func (p *PersistentTopicScanner) Close() error {
 
 func (p *PersistentTopicScanner) persist() {
 	buf := make([]byte, 8)
-	for {
-		select {
-		case o, ok := <-p.oc:
-			if !ok {
-				return // channel closed
-			}
-
-			enc.PutUint64(buf, uint64(o))
-			_, err := p.f.WriteAt(buf, 0)
-			if err != nil {
-				log.Printf("error: failed to persist topic scanner %s: %s", p.ts.Info().ID, err)
-			}
+	for o := range p.oc {
+		enc.PutUint64(buf, uint64(o))
+		_, err := p.f.WriteAt(buf, 0)
+		if err != nil {
+			log.Printf("error: failed to persist topic scanner %s: %s", p.ts.Info().ID, err)
 		}
 	}
 }

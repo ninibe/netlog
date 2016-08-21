@@ -78,7 +78,7 @@ func (ht *HTTPTransport) handleCreateTopic(w http.ResponseWriter, r *http.Reques
 	encoder := json.NewDecoder(r.Body)
 	err := encoder.Decode(&settings)
 	if err != nil && err != io.EOF {
-		log.Printf(err.Error())
+		log.Print(err)
 		JSONErrorResponse(w, netlog.ErrBadRequest)
 		return
 	}
