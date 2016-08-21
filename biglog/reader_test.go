@@ -14,7 +14,7 @@ func TestReader(t *testing.T) {
 	var readerTestDataSize = 99
 
 	bl := setupData(readerTestDataSize)
-	defer bl.Delete(true)
+	defer logDelete(bl, true)
 
 	// TODO make this loop all cases
 	// Test seek embedded offset
@@ -38,7 +38,9 @@ func TestReader(t *testing.T) {
 		t.Errorf("read %d bytes instead of %d", n, readerTestDataSize)
 	}
 
-	r.Close()
+	if err := r.Close(); err != nil {
+		t.Error(err)
+	}
 
 	double := bytes.Repeat(single, 2)
 	doubuf := make([]byte, readerTestDataSize*2)
@@ -106,7 +108,7 @@ func TestReader(t *testing.T) {
 
 func TestReaderInterfaces(t *testing.T) {
 	bl := setupData(100)
-	defer bl.Delete(true)
+	defer logDelete(bl, true)
 
 	r, _, err := NewReader(bl, 0)
 	if err != nil {

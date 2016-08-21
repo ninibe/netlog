@@ -42,7 +42,11 @@ func TestNewWatcher(t *testing.T) {
 		t.Errorf("Watcher detected %d events instead of %d", atomic.LoadInt32(&events), 2)
 	}
 
-	wa.Close()
+	err = wa.Close()
+	if err != nil {
+		t.Error(err)
+	}
+
 	time.Sleep(time.Millisecond)
 
 	if atomic.LoadInt32(&closed) != 1 {
@@ -52,6 +56,7 @@ func TestNewWatcher(t *testing.T) {
 
 func TestWatcherCount(t *testing.T) {
 	bl := tempBigLog()
+	defer logDelete(bl, true)
 
 	var n = 10
 	var nw = make([]*Watcher, n)
@@ -65,12 +70,14 @@ func TestWatcherCount(t *testing.T) {
 	}
 
 	for i := 0; i < n; i++ {
-		nw[i].Close()
+		err := nw[i].Close()
+		if err != nil {
+			t.Error(err)
+		}
+
 		count := len(bl.watchers.Load().(watcherMap))
 		if count != 9-i {
 			t.Errorf("Watcher map count error. Expected %d Actual %d", 9-i, count)
 		}
 	}
-
-	bl.Delete(true)
 }

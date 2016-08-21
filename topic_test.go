@@ -84,7 +84,8 @@ func TestParseOffset(t *testing.T) {
 		panicOn(err)
 	}
 
-	top.bl.Sync()
+	err = top.bl.Sync()
+	panicOn(err)
 
 	for _, tt := range parseTests {
 		offset, err := top.ParseOffset(tt.str)

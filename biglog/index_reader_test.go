@@ -13,7 +13,7 @@ var indexTestDataSize = 100
 
 func TestReadEntries(t *testing.T) {
 	bl := setupData(indexTestDataSize)
-	defer bl.Delete(true)
+	defer logDelete(bl, true)
 
 	// TODO make this loop all cases
 	// Test seek embedded offset
@@ -35,7 +35,9 @@ func TestReadEntries(t *testing.T) {
 		t.Errorf("Expected %d entries instead of %d", 5, len(entries))
 	}
 
-	ir.Close()
+	if err := ir.Close(); err != nil {
+		t.Error(err)
+	}
 
 	var offset = 0
 	ir, _, err = NewIndexReader(bl, 0)
@@ -66,7 +68,7 @@ func TestReadEntries(t *testing.T) {
 
 func TestReadSection(t *testing.T) {
 	bl := setupData(indexTestDataSize)
-	defer bl.Delete(true)
+	defer logDelete(bl, true)
 
 	// TODO make this loop all cases
 	// Test seek embedded offset
@@ -107,7 +109,9 @@ func TestReadSection(t *testing.T) {
 		t.Errorf("offset delta %d instead of %d", sec.Size, indexTestDataSize)
 	}
 
-	ir.Close()
+	if err := ir.Close(); err != nil {
+		t.Error(err)
+	}
 
 	ir, _, err = NewIndexReader(bl, 0)
 	if err != nil {
@@ -135,12 +139,11 @@ func TestReadSection(t *testing.T) {
 	if sec.Size != int64(indexTestDataSize*9) {
 		t.Errorf("offset delta %d instead of %d", sec.Size, int64(indexTestDataSize*9))
 	}
-
 }
 
 func TestIndexReaderInterfaces(t *testing.T) {
 	bl := setupData(100)
-	defer bl.Delete(true)
+	defer logDelete(bl, true)
 
 	r, _, err := NewIndexReader(bl, 0)
 	if err != nil {

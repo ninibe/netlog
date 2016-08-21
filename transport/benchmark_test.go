@@ -45,12 +45,12 @@ func BenchmarkWritePayload(b *testing.B) {
 	req, err := http.NewRequest("DELETE", topicURL, nil)
 	panicOn(err)
 	r, err := http.DefaultClient.Do(req)
-	io.Copy(os.Stdin, r.Body)
+	_, _ = io.Copy(os.Stdin, r.Body)
 
 	req, err = http.NewRequest("POST", topicURL, nil)
 	panicOn(err)
 	r, err = http.DefaultClient.Do(req)
-	io.Copy(os.Stdin, r.Body)
+	_, _ = io.Copy(os.Stdin, r.Body)
 
 	data = bytes.Repeat(data, 20)
 	buf := bytes.NewBuffer(data)
@@ -66,7 +66,7 @@ func BenchmarkWritePayload(b *testing.B) {
 		panicOn(err)
 		r, err = http.DefaultClient.Do(req)
 		panicOn(err)
-		io.Copy(os.Stdout, r.Body)
+		_, _ = io.Copy(os.Stdout, r.Body)
 	}
 	b.StopTimer()
 

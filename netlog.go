@@ -123,7 +123,10 @@ func (nl *NetLog) loadTopic(name string) (err error) {
 
 	dec := json.NewDecoder(f)
 	var settings TopicSettings
-	dec.Decode(&settings)
+	err = dec.Decode(&settings)
+	if err != nil {
+		return err
+	}
 
 	t := newTopic(bl, settings, nl.topicSettings)
 	return nl.register(name, t)
@@ -160,7 +163,7 @@ func (nl *NetLog) CreateTopic(name string, settings TopicSettings) (t *Topic, er
 	}
 
 	enc := json.NewEncoder(f)
-	enc.Encode(t.settings)
+	err = enc.Encode(t.settings)
 	if err != nil {
 		panic(err)
 	}
@@ -201,7 +204,7 @@ func (nl *NetLog) DeleteTopic(name string, force bool) (err error) {
 	err = t.bl.Delete(force)
 	if err != nil {
 		// in case of error register back
-		nl.register(name, t)
+		_ = nl.register(name, t)
 		return err
 	}
 

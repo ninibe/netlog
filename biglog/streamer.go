@@ -109,16 +109,11 @@ func (st *Streamer) Get(maxOffsets, maxBytes int64) (delta *StreamDelta, err err
 // so the reader can advance and a new StreamDelta can be issued.
 func (st *Streamer) Put(delta *StreamDelta) (err error) {
 	defer st.mu.Unlock()
-
-	if err != nil {
-		return err
-	}
-
-	return err
+	return nil
 }
 
 func (st *Streamer) correctPartialDelta(delta *StreamDelta) error {
 	// TODO implement when defined.
-	Logger.Printf("error: correctPartialDelta not implemented")
+	Logger.Print("error: correctPartialDelta not implemented")
 	return nil
 }

@@ -7,6 +7,7 @@ package biglog
 import (
 	crand "crypto/rand"
 	"fmt"
+	"log"
 	"math/rand"
 	"os"
 	"path/filepath"
@@ -20,7 +21,8 @@ func setupData(size int) *BigLog {
 	// offsets 0, 1, 3, 6, 10, 15, 21, 28, 36 - 45
 	for i := 1; i < 10; i++ {
 		if i == 5 {
-			bl.Split()
+			err := bl.Split()
+			panicOn(err)
 		}
 
 		_, err := bl.WriteN(data, i)
@@ -52,7 +54,8 @@ func randStr(size int) []byte {
 
 func randData(size int) []byte {
 	var bytes = make([]byte, size)
-	crand.Read(bytes)
+	_, err := crand.Read(bytes)
+	panicOn(err)
 	return bytes
 }
 
@@ -68,5 +71,18 @@ func randDataSet(entries, size int) [][]byte {
 func panicOn(err error) {
 	if err != nil {
 		panic(err)
+	}
+}
+
+type deleter interface {
+	Delete(bool) error
+}
+
+// logDelete calls delete on the subject and logs the error if any
+// this is handy to call delete on defer during tests
+func logDelete(d deleter, force bool) {
+	err := d.Delete(force)
+	if err != nil {
+		log.Printf("error: %s", err)
 	}
 }

@@ -1,5 +1,31 @@
 language: go
 
 go:
- - 1.6
- - tip
+  - 1.7
+  - tip
+
+
+before_install:
+  - go get github.com/kardianos/govendor
+  - go get golang.org/x/tools/cmd/goimports
+  - go get github.com/golang/lint/golint
+  - go get github.com/kisielk/errcheck
+  - go get github.com/mattn/goveralls
+  - go get github.com/opennota/check/cmd/structcheck
+  - go get github.com/opennota/check/cmd/varcheck
+  - go get github.com/jgautheron/goconst/cmd/goconst
+  - go get honnef.co/go/simple/cmd/gosimple
+  - go get honnef.co/go/staticcheck/cmd/staticcheck
+
+script:
+  - go test -race ./...
+  - "! goimports -d $(find . -type f -name '*.go' -not -path './vendor/*') 2>&1 | read"
+  - go vet $(govendor list -no-status +local)
+  - errcheck $(govendor list -no-status +local)
+  - structcheck $(govendor list -no-status +local)
+  - varcheck $(govendor list -no-status +local)
+  - staticcheck $(govendor list -no-status +local)
+  - gosimple $(govendor list -no-status +local)
+  - goconst -ignore vendor ./...
+  - rm -Rf vendor # golint won't work with package list
+  - golint -set_exit_status ./...
