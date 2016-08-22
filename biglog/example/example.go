@@ -7,6 +7,8 @@ import (
 	"os"
 	"time"
 
+	"log"
+
 	"github.com/ninibe/netlog/biglog"
 )
 
@@ -40,7 +42,7 @@ func step1() {
 	// 10 is for demo purposes, is should be 10k-10M depending on your use cases
 	bl, err := biglog.Create("demo", 10)
 	panicOn(err)
-	defer bl.Close()
+	defer logClose(bl)
 
 	// Write one entry, could be any blob of bytes
 	_, err = bl.Write([]byte("some data"))
@@ -56,7 +58,7 @@ func step2() {
 	// Open an existing BigLog
 	bl, err := biglog.Open("demo")
 	panicOn(err)
-	defer bl.Close()
+	defer logClose(bl)
 
 	// Write more data
 	_, err = bl.Write([]byte("some more data"))
@@ -81,12 +83,12 @@ func step3() {
 	// Open an existing BigLog
 	bl, err := biglog.Open("demo")
 	panicOn(err)
-	defer bl.Close()
+	defer logClose(bl)
 
 	// Create a new index reader
 	ir, _, err := biglog.NewIndexReader(bl, 0)
 	panicOn(err)
-	defer ir.Close()
+	defer logClose(ir)
 
 	// Read the entries stored
 	entries, err := ir.ReadEntries(10)
@@ -98,7 +100,7 @@ func step3() {
 	// Create a new data reader
 	r, _, err := biglog.NewReader(bl, 0)
 	panicOn(err)
-	defer r.Close()
+	defer logClose(r)
 
 	data, err := ioutil.ReadAll(r)
 	panicOn(err)
@@ -110,7 +112,7 @@ func step4() {
 	// Open an existing BigLog
 	bl, err := biglog.Open("demo")
 	panicOn(err)
-	defer bl.Close()
+	defer logClose(bl)
 
 	// WriteN means the written data contains 5 offsets
 	_, err = bl.WriteN([]byte("this is data for 5 offsets"), 5)
@@ -122,7 +124,7 @@ func step4() {
 	// Create an scanner from the beginning of the log
 	sc, err := biglog.NewScanner(bl, 0)
 	panicOn(err)
-	defer sc.Close()
+	defer logClose(sc)
 
 	for {
 		if !sc.Scan() {
@@ -137,10 +139,10 @@ func step5() {
 	// Open an existing BigLog
 	bl, err := biglog.Open("demo")
 	panicOn(err)
-	defer bl.Close()
+	defer logClose(bl)
 
 	wc := biglog.NewWatcher(bl)
-	defer wc.Close()
+	defer logClose(wc)
 
 	go func() {
 		for {
@@ -158,5 +160,12 @@ func step5() {
 func panicOn(err error) {
 	if err != nil && err != io.EOF {
 		panic(err)
+	}
+}
+
+func logClose(c io.Closer) {
+	err := c.Close()
+	if err != nil {
+		log.Printf("error: %s", err)
 	}
 }

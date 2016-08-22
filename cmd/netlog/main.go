@@ -35,9 +35,7 @@ func main() {
 	colog.Register()
 
 	ll, err := colog.ParseLevel(*logLevel)
-	if err != nil {
-		log.Fatalf("alert: %s\n", err)
-	}
+	fatalOn(err)
 	colog.SetMinLevel(ll)
 
 	if *debug {
@@ -47,22 +45,16 @@ func main() {
 
 	var server http.Server
 	server.Addr = *listen
-	http2.ConfigureServer(&server, nil)
+	err = http2.ConfigureServer(&server, nil)
+	fatalOn(err)
 
 	segAge, err := bigduration.ParseBigDuration(*segAge)
-	if err != nil {
-		log.Fatalf("alert: %s\n", err)
-	}
-
+	fatalOn(err)
 	mIterval, err := bigduration.ParseBigDuration(*monInterval)
-	if err != nil {
-		log.Fatalf("alert: %s\n", err)
-	}
+	fatalOn(err)
 
 	bInterval, err := bigduration.ParseBigDuration(*batchInterval)
-	if err != nil {
-		log.Fatalf("alert: %s\n", err)
-	}
+	fatalOn(err)
 
 	topSettings := netlog.TopicSettings{
 		SegAge:           segAge,
@@ -75,13 +67,16 @@ func main() {
 	nl, err := netlog.NewNetLog(*dataDir,
 		netlog.DefaultTopicSettings(topSettings),
 		netlog.MonitorInterval(mIterval))
-	if err != nil {
-		log.Fatalf("alert: %s\n", err)
-	}
+	fatalOn(err)
 
 	http.Handle("/", transport.NewHTTPTransport(nl))
 	log.Printf("info: listening on %q", server.Addr)
 	log.Printf("info: data dir on %q", *dataDir)
 	log.Fatalf("alert: %s\n", server.ListenAndServe())
-	//	log.Fatal(server.ListenAndServeTLS(GenCertificate()))
+}
+
+func fatalOn(err error) {
+	if err != nil {
+		log.Fatalf("alert: %s\n", err)
+	}
 }

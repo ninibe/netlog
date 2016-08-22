@@ -6,6 +6,8 @@ go:
 
 
 before_install:
+  - go get github.com/kardianos/govendor
+  - go get golang.org/x/tools/cmd/goimports
   - go get github.com/golang/lint/golint
   - go get github.com/kisielk/errcheck
   - go get github.com/mattn/goveralls
@@ -17,19 +19,13 @@ before_install:
 
 script:
   - go test -race ./...
-  - "! gofmt -d $(find . -type f -name '*.go' -not -path './vendor/*') 2>&1 | read"
-  - errcheck github.com/ninibe/netlog
-  - errcheck github.com/ninibe/netlog/biglog
-  - errcheck github.com/ninibe/netlog/transport/...
-  - structcheck github.com/ninibe/netlog
-  - structcheck github.com/ninibe/netlog/biglog
-  - structcheck github.com/ninibe/netlog/transport/...
-  - varcheck github.com/ninibe/netlog
-  - varcheck github.com/ninibe/netlog/biglog
-  - varcheck github.com/ninibe/netlog/transport/...
-  - rm -Rf vendor
-  - go vet ./...
+  - "! goimports -d $(find . -type f -name '*.go' -not -path './vendor/*') 2>&1 | read"
+  - go vet $(govendor list -no-status +local)
+  - errcheck $(govendor list -no-status +local)
+  - structcheck $(govendor list -no-status +local)
+  - varcheck $(govendor list -no-status +local)
+  - staticcheck $(govendor list -no-status +local)
+  - gosimple $(govendor list -no-status +local)
+  - goconst -ignore vendor ./...
+  - rm -Rf vendor # golint won't work with package list
   - golint -set_exit_status ./...
-  - gosimple ./...
-  - staticcheck ./...
-  - goconst ./...
