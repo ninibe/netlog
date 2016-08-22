@@ -131,9 +131,12 @@ func TestHealthCheckPartialWrite(t *testing.T) {
 	panicOn(err)
 	defer logDelete(seg, true)
 
-	_, _ = seg.WriteN([]byte("some"), 1)
-	_, _ = seg.WriteN([]byte("test"), 2)
-	_, _ = seg.WriteN([]byte("data"), 1)
+	_, err = seg.WriteN([]byte("some"), 1)
+	panicOn(err)
+	_, err = seg.WriteN([]byte("test"), 2)
+	panicOn(err)
+	_, err = seg.WriteN([]byte("data"), 1)
+	panicOn(err)
 
 	_, err = seg.write([]byte("bypassing the index update"))
 	panicOn(err)
