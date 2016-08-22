@@ -20,7 +20,10 @@ func TestTopicScanner(t *testing.T) {
 	topic, err := nl.CreateTopic(topicName, TopicSettings{})
 	panicOn(err)
 
-	defer nl.DeleteTopic(topicName, true)
+	defer func() {
+		err = nl.DeleteTopic(topicName, true)
+		panicOn(err)
+	}()
 
 	messages := randMessageSet()
 	setLen := len(messages)

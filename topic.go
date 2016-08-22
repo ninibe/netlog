@@ -231,7 +231,7 @@ func (t *Topic) ReadFrom(r io.Reader) (n int64, err error) {
 		}
 
 		if !message.ChecksumOK() {
-			log.Printf("warn: corrupt entry in stream")
+			log.Print("warn: corrupt entry in stream")
 			continue
 		}
 
@@ -326,7 +326,11 @@ func (t *Topic) DeleteScanner(ID string) (err error) {
 		return ErrScannerNotFound
 	}
 
-	sc.Close()
+	err = sc.Close()
+	if err != nil {
+		return err
+	}
+
 	t.scanners.Delete(ID)
 
 	log.Printf("info: deleted scanner %s from %q", ID, t.Name())
@@ -387,7 +391,7 @@ func (t *Topic) CheckIntegrity(ctx context.Context, from int64) ([]*IntegrityErr
 		return nil, ExtErr(err)
 	}
 
-	defer ic.Close()
+	defer logClose(ic)
 	iErrs := ic.Check(ctx)
 
 	log.Printf("info: integrity check finished for topic %q. Found %d errors.", t.Name(), len(iErrs))
@@ -448,7 +452,7 @@ func offsetFromFile(filePath string) int64 {
 		return -1
 	}
 
-	defer f.Close()
+	defer logClose(f)
 
 	b, _ := ioutil.ReadAll(f)
 	if len(b) == 8 {

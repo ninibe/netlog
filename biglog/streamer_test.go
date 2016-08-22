@@ -13,7 +13,7 @@ func TestStreamer(t *testing.T) {
 	var entrySize = 1000
 
 	bl := setupData(entrySize)
-	defer bl.Delete(true)
+	defer logDelete(bl, true)
 	streamer, err := NewStreamer(bl, 22)
 	if err != ErrEmbeddedOffset {
 		t.Error(err)

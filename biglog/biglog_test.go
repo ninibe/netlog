@@ -118,7 +118,11 @@ func TestNewBigLog(t *testing.T) {
 		t.Errorf("Unexpected read %q \n doesn't start with: %s", buf, "fifth")
 	}
 
-	bl.Split()
+	err = bl.Split()
+	if err != nil {
+		t.Error(err)
+	}
+
 	info, _ = bl.Info()
 	if len(info.Segments) != 3 {
 		t.Errorf("Segment split failed, found %d segments", len(info.Segments))
@@ -129,7 +133,11 @@ func TestNewBigLog(t *testing.T) {
 		t.Error(err)
 	}
 
-	bl.Sync()
+	err = bl.Sync()
+	if err != nil {
+		t.Error(err)
+	}
+
 	r, _, _ = biglog.NewReader(bl, 0)
 	buf = make([]byte, 100)
 	_, err = r.Read(buf)

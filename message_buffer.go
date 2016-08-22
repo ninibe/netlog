@@ -5,6 +5,7 @@
 package netlog
 
 import (
+	"log"
 	"sync"
 	"time"
 )
@@ -98,7 +99,9 @@ func (m *messageBuffer) launchFlusher(d time.Duration) {
 	for {
 		select {
 		case <-ticker.C:
-			m.Flush()
+			if err := m.Flush(); err != nil {
+				log.Printf("alert: flush failed: %s", err)
+			}
 			continue
 		case <-m.stopChan:
 			close(m.stopChan)

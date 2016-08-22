@@ -25,10 +25,10 @@ func BenchmarkFileWrite(b *testing.B) {
 	b.ReportAllocs()
 	b.SetBytes(int64(len(data)))
 	for i := 0; i <= b.N; i++ {
-		f.Write(data)
+		_, _ = f.Write(data)
 	}
-	f.Close()
-	os.Remove(tmpfile)
+	_ = f.Close()
+	_ = os.Remove(tmpfile)
 }
 
 func BenchmarkFileWriteSync(b *testing.B) {
@@ -37,11 +37,11 @@ func BenchmarkFileWriteSync(b *testing.B) {
 	b.ReportAllocs()
 	b.SetBytes(int64(len(data)))
 	for i := 0; i <= b.N; i++ {
-		f.Write(data)
-		f.Sync()
+		_, _ = f.Write(data)
+		_ = f.Sync()
 	}
-	f.Close()
-	os.Remove(tmpfile)
+	_ = f.Close()
+	_ = os.Remove(tmpfile)
 }
 
 func BenchmarkSegWrite(b *testing.B) {
@@ -52,10 +52,10 @@ func BenchmarkSegWrite(b *testing.B) {
 	b.SetBytes(int64(len(data)))
 	b.StartTimer()
 	for i := 0; i <= b.N; i++ {
-		seg.WriteN(data, 1)
+		_, _ = seg.WriteN(data, 1)
 	}
 	b.StopTimer()
-	seg.Delete(true)
+	_ = seg.Delete(true)
 }
 
 func BenchmarkSegWriteSync(b *testing.B) {
@@ -65,11 +65,11 @@ func BenchmarkSegWriteSync(b *testing.B) {
 	b.SetBytes(int64(len(data)))
 	b.StartTimer()
 	for i := 0; i <= b.N; i++ {
-		seg.WriteN(data, 1)
-		seg.Sync()
+		_, _ = seg.WriteN(data, 1)
+		_ = seg.Sync()
 	}
 	b.StopTimer()
-	seg.Delete(true)
+	_ = seg.Delete(true)
 }
 
 func BenchmarkBiglogWrite(b *testing.B) {
@@ -80,10 +80,10 @@ func BenchmarkBiglogWrite(b *testing.B) {
 	b.SetBytes(int64(len(data)))
 	b.StartTimer()
 	for i := 0; i <= b.N; i++ {
-		bl.Write(data)
+		_, _ = bl.Write(data)
 	}
 	b.StopTimer()
-	bl.Delete(true)
+	_ = bl.Delete(true)
 }
 
 func BenchmarkBiglogWrite4Kbuf(b *testing.B) {
@@ -94,10 +94,10 @@ func BenchmarkBiglogWrite4Kbuf(b *testing.B) {
 	b.SetBytes(int64(len(data)))
 	b.StartTimer()
 	for i := 0; i <= b.N; i++ {
-		bl.Write(data)
+		_, _ = bl.Write(data)
 	}
 	b.StopTimer()
-	bl.Delete(true)
+	_ = bl.Delete(true)
 }
 
 func BenchmarkBiglogWrite64Kbuf(b *testing.B) {
@@ -108,8 +108,8 @@ func BenchmarkBiglogWrite64Kbuf(b *testing.B) {
 	b.SetBytes(int64(len(data)))
 	b.StartTimer()
 	for i := 0; i <= b.N; i++ {
-		bl.Write(data)
+		_, _ = bl.Write(data)
 	}
 	b.StopTimer()
-	bl.Delete(true)
+	_ = bl.Delete(true)
 }

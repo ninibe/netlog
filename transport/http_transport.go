@@ -100,7 +100,7 @@ func (ht *HTTPTransport) handleReadPayload(w http.ResponseWriter, r *http.Reques
 		return
 	}
 
-	defer r.Body.Close()
+	defer logClose(r.Body)
 
 	offset, err := t.ParseOffset(ps.ByName("offset"))
 	if err != nil {
@@ -128,7 +128,7 @@ func (ht *HTTPTransport) handleWritePayload(w http.ResponseWriter, r *http.Reque
 		return
 	}
 
-	defer r.Body.Close()
+	defer logClose(r.Body)
 
 	buf, err := ioutil.ReadAll(r.Body)
 	if len(buf) == 0 || len(buf) < int(r.ContentLength) {
@@ -379,4 +379,13 @@ func JSONOKResponse(w http.ResponseWriter, message string) {
 func trueStr(s string) bool {
 	s = strings.ToLower(s)
 	return s == "1" || s == "true" || s == "yes"
+}
+
+// logClose calls Close on the subject and logs the error if any
+// this is handy to call Close on defer
+func logClose(c io.Closer) {
+	err := c.Close()
+	if err != nil {
+		log.Printf("error: %s", err)
+	}
 }

@@ -129,14 +129,18 @@ func TestHealthCheckPartialWrite(t *testing.T) {
 	rand.Seed(int64(time.Now().Nanosecond()))
 	seg, err := createSegment(os.TempDir(), 128, rand.Int63())
 	panicOn(err)
-	defer seg.Delete(true)
+	defer logDelete(seg, true)
 
-	seg.WriteN([]byte("some"), 1)
-	seg.WriteN([]byte("test"), 2)
-	seg.WriteN([]byte("data"), 1)
+	_, _ = seg.WriteN([]byte("some"), 1)
+	_, _ = seg.WriteN([]byte("test"), 2)
+	_, _ = seg.WriteN([]byte("data"), 1)
 
-	seg.write([]byte("bypassing the index update"))
-	seg.dataFile.Seek(0, 0)
+	_, err = seg.write([]byte("bypassing the index update"))
+	panicOn(err)
+
+	_, err = seg.dataFile.Seek(0, 0)
+	panicOn(err)
+
 	data, err := ioutil.ReadAll(seg.dataFile)
 	if string(data) != "sometestdatabypassing the index update" {
 		t.Fatalf("can not test HealthCheckPartialWrite, data: %s", data)
@@ -147,7 +151,9 @@ func TestHealthCheckPartialWrite(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	seg.dataFile.Seek(0, 0)
+	_, err = seg.dataFile.Seek(0, 0)
+	panicOn(err)
+
 	data, err = ioutil.ReadAll(seg.dataFile)
 	if string(data) != "sometestdata" {
 		t.Errorf("data file not corrected from partial write, data: %s", data)

@@ -50,6 +50,7 @@ func MessageFromPayload(p []byte) Message {
 // MessageSet will panic if a compression type is not provided, since nothing would indicate to streaming
 // clients that further messages are embedded in the payload.
 func MessageSet(msgs []Message, comp CompressionType) Message {
+	// TODO return error instead of panic
 	// TODO buffer pool?
 	buf := &bytes.Buffer{}
 	var w io.WriteCloser
@@ -69,10 +70,16 @@ func MessageSet(msgs []Message, comp CompressionType) Message {
 	}
 
 	for _, m := range msgs {
-		w.Write(m)
+		_, err := w.Write(m)
+		if err != nil {
+			panic(err)
+		}
 	}
 
-	w.Close()
+	err := w.Close()
+	if err != nil {
+		panic(err)
+	}
 
 	m := MessageFromPayload(buf.Bytes())
 	m[compverPos] = byte(comp)
@@ -189,7 +196,7 @@ func unpack(data []byte, comp CompressionType) (msgs []Message, err error) {
 	// close reader if possible on exit
 	defer func() {
 		if r, ok := r.(io.Closer); ok {
-			r.Close()
+			logClose(r)
 		}
 	}()
 

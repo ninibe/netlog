@@ -528,7 +528,11 @@ func createSegIndex(path string, maxIndexEntries int) error {
 		return err
 	}
 
-	defer f.Close()
+	defer func() {
+		if cerr := f.Close(); cerr != nil && err == nil {
+			err = cerr
+		}
+	}()
 
 	init := make([]byte, maxIndexEntries*iw)
 	writeEntry(init, 1, 0)
