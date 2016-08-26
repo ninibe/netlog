@@ -23,12 +23,12 @@ func randMessageSet() []Message {
 		data[k] = randData(rand.Intn(90) + 10)
 	}
 
-	messages := make([]Message, len(data))
+	msgs := make([]Message, len(data))
 	for k := range data {
-		messages[k] = MessageFromPayload(data[k])
+		msgs[k] = FromPayload(data[k])
 	}
 
-	return messages
+	return msgs
 }
 
 var dictionary = "0123456789abcdefghijklmnopqrstuvwxyz"

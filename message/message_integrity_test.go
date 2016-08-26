@@ -10,7 +10,7 @@ func TestCheckMessageIntegrity(t *testing.T) {
 	t.Parallel()
 
 	data := []byte("aaaaaaaaaa")
-	m := MessageFromPayload(data)
+	m := FromPayload(data)
 
 	if CheckMessageIntegrity(m, 1) != nil {
 		t.Errorf("Integrity check failed with valid message")

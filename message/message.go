@@ -17,10 +17,15 @@ import (
 )
 
 const (
+	// PosCompver is the byte position of the compression-version data
 	PosCompver = 0 // CompVer uint8
-	PosCRC32   = 1 // CRC     uint32
-	PosPLenth  = 5 // PLength uint32
+	// PosCRC32 is the byte position of the CRC data
+	PosCRC32 = 1 // CRC     uint32
+	// PosPLenth is the byte position of the payload length data
+	PosPLenth = 5 // PLength uint32
+	// PosPayload is the byte position of the payload data
 	PosPayload = 9 // Payload []byte
+	// headerSize is all bytes before the payload
 	headerSize = PosPayload
 )
 
@@ -43,8 +48,8 @@ var ErrCompression = errors.New("message: invalid compression type")
 
 var enc = binary.BigEndian
 
-// MessageFromPayload returns a message with the appropriate calculated headers from a give data payload.
-func MessageFromPayload(p []byte) Message {
+// FromPayload returns a message with the appropriate calculated headers from a give data payload.
+func FromPayload(p []byte) Message {
 	buf := make([]byte, len(p)+headerSize)
 	enc.PutUint32(buf[PosCRC32:PosCRC32+4], crc32.ChecksumIEEE(p))
 	enc.PutUint32(buf[PosPLenth:PosPLenth+4], uint32(len(p)))
@@ -52,12 +57,12 @@ func MessageFromPayload(p []byte) Message {
 	return Message(buf)
 }
 
-// MessageSet returns a new message with a batch of compressed messages as payload
+// Pack returns a new message with a batch of compressed messages as payload
 // Compression will compress the payload and set the compression header, please be ware that compression
 // at this level is only meant for batching several messages into a single message-set in increase throughput.
-// MessageSet will panic if a compression type is not provided, since nothing would indicate to streaming
+// Pack will panic if a compression type is not provided, since nothing would indicate to streaming
 // clients that further messages are embedded in the payload.
-func MessageSet(msgs []Message, comp CompressionType) Message {
+func Pack(msgs []Message, comp CompressionType) Message {
 	// TODO return error instead of panic
 	// TODO buffer pool?
 	buf := &bytes.Buffer{}
@@ -89,7 +94,7 @@ func MessageSet(msgs []Message, comp CompressionType) Message {
 		panic(err)
 	}
 
-	m := MessageFromPayload(buf.Bytes())
+	m := FromPayload(buf.Bytes())
 	m[PosCompver] = byte(comp)
 
 	return m

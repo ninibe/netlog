@@ -142,7 +142,7 @@ func (ht *HTTPTransport) handleWritePayload(w http.ResponseWriter, r *http.Reque
 		return
 	}
 
-	entry := message.MessageFromPayload(buf)
+	entry := message.FromPayload(buf)
 	buf = entry.Bytes()
 	_, err = t.Write(buf)
 	if err != nil {

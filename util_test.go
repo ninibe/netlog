@@ -49,7 +49,7 @@ func randMessageSet() []message.Message {
 
 	messages := make([]message.Message, len(data))
 	for k := range data {
-		messages[k] = message.MessageFromPayload(data[k])
+		messages[k] = message.FromPayload(data[k])
 	}
 
 	return messages

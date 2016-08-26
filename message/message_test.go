@@ -16,7 +16,7 @@ import (
 func TestMessage(t *testing.T) {
 	t.Parallel()
 	data := randData(rand.Intn(990) + 10)
-	msg := MessageFromPayload(data)
+	msg := FromPayload(data)
 	testMessage(t, data, msg)
 }
 
@@ -71,8 +71,8 @@ func TestUnpackSequence(t *testing.T) {
 func TestUnpackGzip(t *testing.T) {
 	t.Parallel()
 
-	messages := randMessageSet()
-	set := MessageSet(messages, CompressionGzip)
+	msgs := randMessageSet()
+	set := Pack(msgs, CompressionGzip)
 
 	if set.Compression() != CompressionGzip {
 		t.Errorf("Missing gzip flag, got %d", set.Compression())
@@ -83,11 +83,11 @@ func TestUnpackGzip(t *testing.T) {
 		t.Error(err)
 	}
 
-	if len(unpacked) != len(messages) {
-		t.Errorf("Unpacked %d messages vs expected %d", len(unpacked), len(messages))
+	if len(unpacked) != len(msgs) {
+		t.Errorf("Unpacked %d messages vs expected %d", len(unpacked), len(msgs))
 	}
 
-	for k, m := range messages {
+	for k, m := range msgs {
 		testMessage(t, m.Payload(), unpacked[k])
 	}
 }
@@ -95,8 +95,8 @@ func TestUnpackGzip(t *testing.T) {
 func TestUnpackSnappy(t *testing.T) {
 	t.Parallel()
 
-	messages := randMessageSet()
-	set := MessageSet(messages, CompressionSnappy)
+	msgs := randMessageSet()
+	set := Pack(msgs, CompressionSnappy)
 
 	if set.Compression() != CompressionSnappy {
 		t.Errorf("Missing snappy flag, got %d", set.Compression())
@@ -111,11 +111,11 @@ func TestUnpackSnappy(t *testing.T) {
 		t.Error(err)
 	}
 
-	if len(unpacked) != len(messages) {
-		t.Errorf("Unpacked %d messages vs expected %d", len(unpacked), len(messages))
+	if len(unpacked) != len(msgs) {
+		t.Errorf("Unpacked %d messages vs expected %d", len(unpacked), len(msgs))
 	}
 
-	for k, m := range messages {
+	for k, m := range msgs {
 		testMessage(t, m.Payload(), unpacked[k])
 	}
 }
