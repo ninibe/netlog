@@ -19,6 +19,7 @@ import (
 
 	"github.com/ninibe/bigduration"
 	"github.com/ninibe/netlog"
+	"github.com/ninibe/netlog/message"
 )
 
 // NewHTTPTransport transport sets up an HTTP interface around a NetLog.
@@ -141,7 +142,7 @@ func (ht *HTTPTransport) handleWritePayload(w http.ResponseWriter, r *http.Reque
 		return
 	}
 
-	entry := netlog.MessageFromPayload(buf)
+	entry := message.MessageFromPayload(buf)
 	buf = entry.Bytes()
 	_, err = t.Write(buf)
 	if err != nil {

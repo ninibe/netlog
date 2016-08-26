@@ -10,15 +10,16 @@ import (
 	"time"
 
 	"github.com/ninibe/bigduration"
+	"github.com/ninibe/netlog/message"
 )
 
 func TestMessageBuffer(t *testing.T) {
 	t.Parallel()
 
-	comps := []CompressionType{
-		CompressionGzip,
-		CompressionSnappy,
-		CompressionNone,
+	comps := []message.CompressionType{
+		message.CompressionGzip,
+		message.CompressionSnappy,
+		message.CompressionNone,
 	}
 
 	for _, comp := range comps {
@@ -50,7 +51,7 @@ func TestMessageBuffer(t *testing.T) {
 		}
 
 		for _, batch := range w.data {
-			iErr := CheckMessageIntegrity(batch, batchSize)
+			iErr := message.CheckMessageIntegrity(batch, batchSize)
 			if iErr != nil {
 				t.Errorf("Integrity error on buffered message: %+v", iErr)
 			}
@@ -68,7 +69,7 @@ func TestMessageBufferFlusher(t *testing.T) {
 	mb := newMessageBuffer(nw, TopicSettings{
 		BatchInterval:    bd,
 		BatchNumMessages: 100000, // something unreachable
-		CompressionType:  CompressionGzip,
+		CompressionType:  message.CompressionGzip,
 	})
 
 	// Give the flusher a head start
@@ -83,14 +84,14 @@ func TestMessageBufferFlusher(t *testing.T) {
 	}
 
 	if nw.Writes() != 0 {
-		t.Errorf("Message buffer flushed ahead of time")
+		t.Error("Message buffer flushed ahead of time")
 	}
 
 	// wait for flusher to kick in
 	time.Sleep(bd.Duration())
 
 	if nw.Writes() != 1 {
-		t.Errorf("Message buffer not flushed in time")
+		t.Error("Message buffer not flushed in time")
 	}
 }
 

@@ -11,6 +11,7 @@ import (
 	"net/http"
 
 	"github.com/ninibe/netlog/biglog"
+	"github.com/ninibe/netlog/message"
 )
 
 // NLError is a known NetLog error with an associates status code.
@@ -79,9 +80,10 @@ var (
 )
 
 var errmap = map[error]NLError{
-	biglog.ErrBusy:     ErrBusy,
-	biglog.ErrNotFound: ErrOffsetNotFound,
-	io.EOF:             ErrEndOfTopic,
+	biglog.ErrBusy:         ErrBusy,
+	biglog.ErrNotFound:     ErrOffsetNotFound,
+	io.EOF:                 ErrEndOfTopic,
+	message.ErrCompression: ErrInvalidCompression,
 }
 
 // ExtErr maps external errors, mostly BigLog errors to NetLog errors.

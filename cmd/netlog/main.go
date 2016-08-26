@@ -14,6 +14,7 @@ import (
 
 	"github.com/ninibe/bigduration"
 	"github.com/ninibe/netlog"
+	"github.com/ninibe/netlog/message"
 	"github.com/ninibe/netlog/transport"
 )
 
@@ -61,7 +62,7 @@ func main() {
 		SegSize:          *segSize,
 		BatchNumMessages: *batchNum,
 		BatchInterval:    bInterval,
-		CompressionType:  netlog.CompressionType(*compression),
+		CompressionType:  message.CompressionType(*compression),
 	}
 
 	nl, err := netlog.NewNetLog(*dataDir,

@@ -8,6 +8,8 @@ import (
 	"log"
 	"sync"
 	"time"
+
+	"github.com/ninibe/netlog/message"
 )
 
 type nWriter interface {
@@ -16,10 +18,10 @@ type nWriter interface {
 
 type messageBuffer struct {
 	writer nWriter
-	comp   CompressionType
+	comp   message.CompressionType
 
 	mu       sync.Mutex
-	buff     []Message
+	buff     []message.Message
 	buffered int
 	messages int
 	stopChan chan struct{}
@@ -29,7 +31,7 @@ func newMessageBuffer(w nWriter, settings TopicSettings) *messageBuffer {
 
 	m := &messageBuffer{
 		writer:   w,
-		buff:     make([]Message, settings.BatchNumMessages),
+		buff:     make([]message.Message, settings.BatchNumMessages),
 		comp:     settings.CompressionType,
 		messages: settings.BatchNumMessages,
 		stopChan: make(chan struct{}),
@@ -45,7 +47,7 @@ func (m *messageBuffer) Write(p []byte) (n int, err error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
-	m.buff[m.buffered] = Message(p)
+	m.buff[m.buffered] = message.Message(p)
 	m.buffered++
 	if m.buffered == m.messages {
 		err = m.flush()
@@ -70,11 +72,11 @@ func (m *messageBuffer) flush() (err error) {
 		m.buffered = 0
 	}()
 
-	var data Message
+	var data message.Message
 	if m.buffered == 1 {
 		data = m.buff[0]
 	} else {
-		data = MessageSet(m.buff[:m.buffered], m.comp)
+		data = message.MessageSet(m.buff[:m.buffered], m.comp)
 	}
 
 	_, err = m.writer.WriteN(data.Bytes(), m.buffered)

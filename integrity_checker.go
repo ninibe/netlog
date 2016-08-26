@@ -5,40 +5,13 @@
 package netlog
 
 import (
-	"hash/crc32"
-	"strconv"
+	"golang.org/x/net/context"
 
 	"github.com/ninibe/netlog/biglog"
-	"golang.org/x/net/context"
+	"github.com/ninibe/netlog/message"
 )
 
-// IntegrityErrorType is the category of possible errors in the data.
-type IntegrityErrorType string
-
-const (
-	errLimit = 1000
-
-	// IntegrityChecksumErr is returned when the checksum in the message
-	// header doesn't match the checksum recalculated from the payload.
-	IntegrityChecksumErr IntegrityErrorType = "checksum"
-
-	// IntegrityLengthErr is returned when the length in the message
-	// header doesn't match the length of the payload.
-	IntegrityLengthErr IntegrityErrorType = "length"
-
-	// IntegrityUnknownErr is returned when data can not be read because
-	// of an underlying error reading the data.
-	IntegrityUnknownErr IntegrityErrorType = "unknown"
-)
-
-// IntegrityError is the struct with metadata about an any integrity error found.
-type IntegrityError struct {
-	Offset   int64              `json:"offset"`
-	ODelta   int                `json:"odelta"`
-	Type     IntegrityErrorType `json:"type"`
-	Expected string             `json:"expected"`
-	Actual   string             `json:"actual"`
-}
+const errLimit = 1000
 
 // IntegrityChecker is used to check the integrity of an entire topic.
 type IntegrityChecker struct {
@@ -57,7 +30,7 @@ func NewIntegrityChecker(t *Topic, from int64) (*IntegrityChecker, error) {
 
 // Check reads all data collecting errors which then returns.
 // Is recommended to pass a cancellable context since this operation can be slow.
-func (ic *IntegrityChecker) Check(ctx context.Context) (errors []*IntegrityError) {
+func (ic *IntegrityChecker) Check(ctx context.Context) (errors []*message.IntegrityError) {
 	for {
 		if len(errors) >= errLimit {
 			return errors
@@ -75,17 +48,17 @@ func (ic *IntegrityChecker) Check(ctx context.Context) (errors []*IntegrityError
 		}
 
 		if err != nil {
-			errors = append(errors, &IntegrityError{
+			errors = append(errors, &message.IntegrityError{
 				Offset: o,
 				ODelta: d,
-				Type:   IntegrityUnknownErr,
+				Type:   message.IntegrityUnknownErr,
 				Actual: err.Error(),
 			})
 
 			continue
 		}
 
-		iErr := CheckMessageIntegrity(m, d)
+		iErr := message.CheckMessageIntegrity(m, d)
 		if iErr != nil {
 			iErr.Offset = o
 			errors = append(errors, iErr)
@@ -93,34 +66,10 @@ func (ic *IntegrityChecker) Check(ctx context.Context) (errors []*IntegrityError
 	}
 }
 
-// CheckMessageIntegrity checks the integrity of a single message
-func CheckMessageIntegrity(m Message, delta int) *IntegrityError {
-	if !m.ChecksumOK() {
-		return &IntegrityError{
-			ODelta:   delta,
-			Type:     IntegrityChecksumErr,
-			Expected: strconv.Itoa(int(crc32.ChecksumIEEE(m.Bytes()))),
-			Actual:   strconv.Itoa(int(m.CRC32())),
-		}
-	}
-
-	if int(m.PLength()) != len(m.Payload()) {
-		return &IntegrityError{
-			ODelta:   delta,
-			Type:     IntegrityLengthErr,
-			Expected: strconv.Itoa(int(m.PLength())),
-			Actual:   strconv.Itoa(len(m.Payload())),
-		}
-	}
-
-	// TODO check compressed integrity
-	return nil
-}
-
-func (ic *IntegrityChecker) scan() (Message, int64, int, error) {
+func (ic *IntegrityChecker) scan() (message.Message, int64, int, error) {
 	ok := ic.sc.Scan()
 	if ok {
-		return Message(ic.sc.Bytes()),
+		return message.Message(ic.sc.Bytes()),
 			ic.sc.Offset(),
 			ic.sc.ODelta(),
 			nil

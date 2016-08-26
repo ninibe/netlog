@@ -14,6 +14,7 @@ import (
 	"golang.org/x/net/context"
 
 	"github.com/ninibe/netlog/biglog"
+	"github.com/ninibe/netlog/message"
 )
 
 // file name structure for persisted scanners
@@ -24,7 +25,7 @@ var scannerPattern = "%36s.scanner"
 // TopicScanners are thread-safe.
 type TopicScanner interface {
 	ID() string
-	Scan(ctx context.Context) (m Message, offset int64, err error)
+	Scan(ctx context.Context) (m message.Message, offset int64, err error)
 	Info() TScannerInfo
 	Close() error
 }
@@ -51,7 +52,7 @@ type BLTopicScanner struct {
 	topic    *Topic
 	from     int64
 	last     int64
-	messages []Message
+	messages []message.Message
 
 	sc *biglog.Scanner
 	wc *biglog.Watcher
@@ -103,7 +104,7 @@ func (ts *BLTopicScanner) scanForward(target int64) (err error) {
 // Scan advances the Scanner to the next message, returning the message and the offset.
 // Scan will block when it reaches EOF until there is more data available,
 // the user must provide a context to cancel the request when it needs to stop waiting.
-func (ts *BLTopicScanner) Scan(ctx context.Context) (m Message, offset int64, err error) {
+func (ts *BLTopicScanner) Scan(ctx context.Context) (m message.Message, offset int64, err error) {
 	ts.mu.Lock()
 	defer ts.mu.Unlock()
 
@@ -127,11 +128,11 @@ func (ts *BLTopicScanner) Scan(ctx context.Context) (m Message, offset int64, er
 
 			// if it's got only one message return it
 			if ts.sc.ODelta() == 1 {
-				return Message(ts.sc.Bytes()), ts.last, nil
+				return message.Message(ts.sc.Bytes()), ts.last, nil
 			}
 
 			// unpack message-set into buffer
-			ts.messages, err = Unpack(ts.sc.Bytes())
+			ts.messages, err = message.Unpack(ts.sc.Bytes())
 		}
 
 		if ts.sc.Err() != nil {
@@ -269,7 +270,7 @@ func (p *PersistentTopicScanner) ID() string {
 }
 
 // Scan offloads the actual scan to the underlying scanner while updates the last read offset
-func (p *PersistentTopicScanner) Scan(ctx context.Context) (m Message, offset int64, err error) {
+func (p *PersistentTopicScanner) Scan(ctx context.Context) (m message.Message, offset int64, err error) {
 	m, offset, err = p.ts.Scan(ctx)
 	if offset < 0 {
 		return m, offset, err

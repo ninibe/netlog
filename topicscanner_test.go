@@ -9,6 +9,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/ninibe/netlog/message"
 	"golang.org/x/net/context"
 )
 
@@ -34,7 +35,7 @@ func TestTopicScanner(t *testing.T) {
 	}
 
 	// ouput ~ AABCBABCCABC
-	var output []Message
+	var output []message.Message
 
 	for _, m := range messages {
 

@@ -2,23 +2,26 @@
 // License, v. 2.0. If a copy of the MPL was not distributed with this
 // file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
-package netlog
+package message
 
 import (
 	"bytes"
 	"compress/gzip"
+	"errors"
 	"hash/crc32"
 	"io"
+
+	"encoding/binary"
 
 	"github.com/golang/snappy"
 )
 
 const (
-	compverPos = 0 // CompVer uint8
-	crc32Pos   = 1 // CRC     uint32
-	plenthPos  = 5 // PLength uint32
-	payloadPos = 9 // Payload []byte
-	headerSize = payloadPos
+	PosCompver = 0 // CompVer uint8
+	PosCRC32   = 1 // CRC     uint32
+	PosPLenth  = 5 // PLength uint32
+	PosPayload = 9 // Payload []byte
+	headerSize = PosPayload
 )
 
 // CompressionType indicates a type of compression for message sets
@@ -35,12 +38,17 @@ const (
 	CompressionSnappy CompressionType = 3
 )
 
+// ErrCompression is returning when the compression type defined is unknown
+var ErrCompression = errors.New("message: invalid compression type")
+
+var enc = binary.BigEndian
+
 // MessageFromPayload returns a message with the appropriate calculated headers from a give data payload.
 func MessageFromPayload(p []byte) Message {
 	buf := make([]byte, len(p)+headerSize)
-	enc.PutUint32(buf[crc32Pos:crc32Pos+4], crc32.ChecksumIEEE(p))
-	enc.PutUint32(buf[plenthPos:plenthPos+4], uint32(len(p)))
-	copy(buf[payloadPos:], p)
+	enc.PutUint32(buf[PosCRC32:PosCRC32+4], crc32.ChecksumIEEE(p))
+	enc.PutUint32(buf[PosPLenth:PosPLenth+4], uint32(len(p)))
+	copy(buf[PosPayload:], p)
 	return Message(buf)
 }
 
@@ -82,7 +90,7 @@ func MessageSet(msgs []Message, comp CompressionType) Message {
 	}
 
 	m := MessageFromPayload(buf.Bytes())
-	m[compverPos] = byte(comp)
+	m[PosCompver] = byte(comp)
 
 	return m
 }
@@ -92,7 +100,7 @@ type Message []byte
 
 // CompVer returns the first byte which reflects both compression a format version.
 func (m *Message) CompVer() uint8 {
-	return m.Bytes()[compverPos]
+	return m.Bytes()[PosCompver]
 }
 
 // Compression returns the compression encoded in bits 4 to 8 of the header.
@@ -112,12 +120,12 @@ func (m *Message) Size() int {
 
 // CRC32 returns the checksum of the payload.
 func (m *Message) CRC32() uint32 {
-	return enc.Uint32(m.Bytes()[crc32Pos : crc32Pos+4])
+	return enc.Uint32(m.Bytes()[PosCRC32 : PosCRC32+4])
 }
 
 // PLength returns the length (bytes) of the payload.
 func (m *Message) PLength() uint32 {
-	return enc.Uint32(m.Bytes()[plenthPos : plenthPos+4])
+	return enc.Uint32(m.Bytes()[PosPLenth : PosPLenth+4])
 }
 
 // Payload returns the data bytes.
@@ -190,13 +198,13 @@ func unpack(data []byte, comp CompressionType) (msgs []Message, err error) {
 		r = snappy.NewReader(r)
 
 	default:
-		return nil, ErrInvalidCompression
+		return nil, ErrCompression
 	}
 
 	// close reader if possible on exit
 	defer func() {
-		if r, ok := r.(io.Closer); ok {
-			logClose(r)
+		if r, ok := r.(io.Closer); ok && err == nil {
+			err = r.Close()
 		}
 	}()
 

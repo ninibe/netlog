@@ -16,11 +16,12 @@ import (
 	"strings"
 	"time"
 
+	"github.com/comail/go-uuid/uuid"
 	"github.com/ninibe/bigduration"
 	"golang.org/x/net/context"
 
-	"github.com/comail/go-uuid/uuid"
 	"github.com/ninibe/netlog/biglog"
+	"github.com/ninibe/netlog/message"
 )
 
 const settingsFile = "settings.json"
@@ -51,7 +52,7 @@ type TopicSettings struct {
 	// BatchInterval is the interval at which batched messages are flushed to disk.
 	BatchInterval bigduration.BigDuration `json:"batch_interval,ommitempty"`
 	// CompressionType allows to specify how batches are compressed.
-	CompressionType CompressionType `json:"compression_type,ommitempty"`
+	CompressionType message.CompressionType `json:"compression_type,ommitempty"`
 }
 
 func newTopic(bl *biglog.BigLog, settings TopicSettings, defaultSettings TopicSettings) *Topic {
@@ -72,7 +73,7 @@ func newTopic(bl *biglog.BigLog, settings TopicSettings, defaultSettings TopicSe
 		settings.BatchInterval = defaultSettings.BatchInterval
 	}
 
-	if settings.CompressionType == CompressionDefault {
+	if settings.CompressionType == message.CompressionDefault {
 		settings.CompressionType = defaultSettings.CompressionType
 	}
 
@@ -217,10 +218,10 @@ func (t *Topic) checkSegmentsSize(bi *biglog.Info) error {
 // The return value n is the number of bytes read.
 // It implements the io.ReaderFrom interface.
 func (t *Topic) ReadFrom(r io.Reader) (n int64, err error) {
-	var message Message
+	var m message.Message
 	for {
-		message, err = ReadMessage(r)
-		n += int64(message.Size())
+		m, err = message.ReadMessage(r)
+		n += int64(m.Size())
 		if err == io.EOF {
 			return
 		}
@@ -230,12 +231,12 @@ func (t *Topic) ReadFrom(r io.Reader) (n int64, err error) {
 			return
 		}
 
-		if !message.ChecksumOK() {
+		if !m.ChecksumOK() {
 			log.Print("warn: corrupt entry in stream")
 			continue
 		}
 
-		_, err = t.Write(message.Bytes())
+		_, err = t.Write(m.Bytes())
 		if err != nil {
 			log.Printf("error: could not write stream: %s", err)
 			return
@@ -245,30 +246,30 @@ func (t *Topic) ReadFrom(r io.Reader) (n int64, err error) {
 
 // Payload is a utility method to fetch the payload of a single offset.
 func (t *Topic) Payload(offset int64) ([]byte, error) {
-	reader, ret, err := biglog.NewReader(t.bl, offset)
+	r, ret, err := biglog.NewReader(t.bl, offset)
 	if err != nil && err != biglog.ErrEmbeddedOffset {
 		return nil, err
 	}
 
-	entry, err := ReadMessage(reader)
+	entry, err := message.ReadMessage(r)
 	if err != nil {
 		return nil, err
 	}
 
 	// extract list of messages out of the stored entry
-	msgs, err := Unpack(entry)
+	msgs, err := message.Unpack(entry)
 	if err != nil {
 		return nil, err
 	}
 
 	// ret is the first offset of the returned list
 	// offset-ret = position of message within the list
-	msg := msgs[offset-ret]
-	if !msg.ChecksumOK() {
+	m := msgs[offset-ret]
+	if !m.ChecksumOK() {
 		return nil, ErrCRC
 	}
 
-	return msg.Payload(), nil
+	return m.Payload(), nil
 }
 
 // NewScanner creates a new scanner starting at offset `from`. If `persist` is true,
@@ -383,7 +384,7 @@ func (t *Topic) ParseOffset(str string) (int64, error) {
 }
 
 // CheckIntegrity scans the topic and checks for inconsistencies in the data
-func (t *Topic) CheckIntegrity(ctx context.Context, from int64) ([]*IntegrityError, error) {
+func (t *Topic) CheckIntegrity(ctx context.Context, from int64) ([]*message.IntegrityError, error) {
 	log.Printf("info: checking integrity of topic %q", t.Name())
 
 	ic, err := NewIntegrityChecker(t, from)
