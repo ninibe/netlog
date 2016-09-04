@@ -200,7 +200,7 @@ func (ts *BLTopicScanner) Info() TScannerInfo {
 	ts.mu.RLock()
 	defer ts.mu.RUnlock()
 
-	next := ts.last + 1
+	next := ts.sc.Offset() + 1
 	oldest := ts.topic.bl.Oldest()
 	if oldest > next {
 		next = oldest
