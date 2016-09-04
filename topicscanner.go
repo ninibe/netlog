@@ -49,6 +49,7 @@ type BLTopicScanner struct {
 	mu       sync.RWMutex
 	_ID      string
 	topic    *Topic
+	from     int64
 	last     int64
 	messages []Message
 
@@ -66,6 +67,7 @@ func newBLTopicScanner(t *Topic, ID string, from int64) (bts *BLTopicScanner, er
 	bts = &BLTopicScanner{
 		_ID:   ID,
 		topic: t,
+		from:  from,
 		last:  -1,
 		sc:    sc,
 		wc:    biglog.NewWatcher(t.bl),
@@ -190,27 +192,37 @@ func (ts *BLTopicScanner) Close() error {
 type TScannerInfo struct {
 	ID      string `json:"id"`
 	Next    int64  `json:"next"`
-	Last    int64  `json:"last"`
+	From    int64  `json:"from"`
 	Persist bool   `json:"persistent"`
 }
 
 // Info returns a TScannerInfo struct with the scanner's
-// next offset and the last scanned one
+// next offset and the initial offset.
 func (ts *BLTopicScanner) Info() TScannerInfo {
 	ts.mu.RLock()
 	defer ts.mu.RUnlock()
 
-	next := ts.sc.Offset() + 1
+	return TScannerInfo{
+		ID:   ts._ID,
+		Next: ts.next(),
+		From: ts.from,
+	}
+}
+
+// next returns next index for the scanner
+func (ts *BLTopicScanner) next() (next int64) {
+	if ts.last < 0 {
+		next = ts.from
+	} else {
+		next = ts.last + 1
+	}
+
 	oldest := ts.topic.bl.Oldest()
 	if oldest > next {
 		next = oldest
 	}
 
-	return TScannerInfo{
-		ID:   ts._ID,
-		Next: next,
-		Last: ts.last,
-	}
+	return
 }
 
 // newPersistentTopicScanner returns a new topic scanner wrapper which will persist the scanners state
