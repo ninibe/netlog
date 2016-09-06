@@ -155,19 +155,19 @@ func ReadMessage(r io.Reader) (entry Message, err error) {
 
 	// TODO buffer pool?
 	header := make([]byte, headerSize)
-	n, err := r.Read(header)
+	_, err = io.ReadFull(r, header)
 	if err != nil {
-		return entry, err
-	}
-
-	if n != headerSize {
-		return entry, io.ErrShortBuffer
+		return nil, err
 	}
 
 	entry = Message(header)
 	buf := make([]byte, entry.Size())
 	copy(buf, header)
-	_, _ = r.Read(buf[headerSize:])
+	_, err = io.ReadFull(r, buf[headerSize:])
+	if err != nil {
+		return nil, err
+	}
+
 	entry = Message(buf)
 
 	return entry, err
