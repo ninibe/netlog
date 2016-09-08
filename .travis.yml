@@ -16,6 +16,8 @@ before_install:
   - go get github.com/jgautheron/goconst/cmd/goconst
   - go get honnef.co/go/simple/cmd/gosimple
   - go get honnef.co/go/staticcheck/cmd/staticcheck
+  - go get github.com/onsi/ginkgo/ginkgo
+  - go get github.com/onsi/gomega
 
 script:
   - go test -race ./...
