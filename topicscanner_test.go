@@ -89,3 +89,44 @@ func TestTopicScanner(t *testing.T) {
 		t.Errorf("Bad scan. Payload not equal to original data.\n Got: % x\n Exp: % x\n", messages[2].Payload(), data)
 	}
 }
+
+func TestScannerInfo(t *testing.T) {
+	// Test info of a new scanner
+	nl := tempNetLog()
+	topicName := randStr(6)
+	topic, err := nl.CreateTopic(topicName, TopicSettings{})
+	panicOn(err)
+
+	defer func() {
+		err = nl.DeleteTopic(topicName, true)
+		panicOn(err)
+	}()
+
+	messages := randMessageSet()[:3]
+
+	var sequence []byte
+	for _, m := range messages {
+		sequence = append(sequence, m.Bytes()...)
+	}
+
+	for _, m := range messages {
+		_, err = topic.Write(m)
+		panicOn(err)
+	}
+
+	var tsInfo TScannerInfo
+	var i int64
+	for i = 0; i < 3; i++ {
+		ts, err := topic.NewScanner(i, false)
+		if err != nil {
+			t.Fatal(err)
+		}
+		tsInfo = ts.Info()
+		if tsInfo.Next != i {
+			t.Errorf("Incorrect next value in info.\n Got: % x\n Exp: % x\n", tsInfo.Next, i)
+		}
+		if tsInfo.From != i {
+			t.Errorf("Incorrect from value in info.\n Got: % x\n Exp: % x\n", tsInfo.From, i)
+		}
+	}
+}
