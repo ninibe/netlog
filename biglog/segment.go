@@ -119,6 +119,10 @@ func createSegment(dirPath string, maxIndexEntries int, baseOffset int64) (*segm
 // The path to the data file is calculated based on the given indexPath.
 // The returned segment is fully initialized and ready to be used
 // immediately if no error is returned.
+//
+// ErrLoadSegment is returned if the indexPath does not conform to the
+// indexPattern or the corresponding index or data file can not be opened
+// or memory mapped.
 func loadSegment(indexPath string) (*segment, error) {
 	dirPath, indexName := filepath.Split(indexPath)
 
@@ -201,7 +205,8 @@ func (s *segment) setCreatedTS() {
 	_, s.createdTS, _ = readEntry(s.index)
 }
 
-// WriteN writes a batch of N offsets
+// WriteN writes a batch of n entries from b to the segment.
+// It returns the number of bytes written from b and any error encountered.
 func (s *segment) WriteN(b []byte, n uint32) (written int, err error) {
 	if written, err = s.write(b); err != nil {
 		return 0, err
@@ -211,22 +216,24 @@ func (s *segment) WriteN(b []byte, n uint32) (written int, err error) {
 	return written, err
 }
 
-// Write appends len(b) bytes to the segment
+// write appends len(b) bytes to the segment.
+// ErrSegmentFull is returned if the segment is full.
+// Note that the index must be updated separately (using updateIndex)
 func (s *segment) write(b []byte) (n int, err error) {
-
 	if s.NiFO >= s.indexSize {
 		return 0, ErrSegmentFull
 	}
 
 	n, err = s.writer.Write(b)
 	if err != nil {
-		return 0, err
+		return 0, err // TODO what if the writer terminated early? can we just do: `return s.writer.Write(b)` ?
 	}
 
 	return n, err
 }
 
-// ReadFrom reads data from r until EOF or error. Appending one entry to the index.
+// ReadFrom reads data from src until EOF or an error is encountered.
+// All read data is indexed as a singly entry.
 func (s *segment) ReadFrom(src io.Reader) (n int64, err error) {
 	n, err = io.Copy(s.dataFile, src)
 	if n > 0 {
@@ -307,9 +314,9 @@ func (s *segment) Sync() error {
 	return s.index.Sync(gommap.MS_SYNC)
 }
 
-// IsFull returns true when the index does not accept more writes
+// IsFull returns true when the index does not accept more writes.
 func (s *segment) IsFull() bool {
-	return s.NiFO+iw == s.indexSize
+	return s.NiFO+iw >= s.indexSize
 }
 
 // IsBusy returns true when the segments has active readers
