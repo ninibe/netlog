@@ -64,7 +64,7 @@ type BigLog struct {
 	readers atomic.Value
 }
 
-// SetOpts sets optinos after BigLog has been created
+// SetOpts sets options after BigLog has been created
 func (bl *BigLog) SetOpts(opts ...Option) {
 	for _, opt := range opts {
 		opt(bl)
@@ -81,8 +81,8 @@ type readerMap map[io.Closer]struct{}
 // a preallocated index file of disk size = maxIndexEntries * 4 bytes.
 // In the index each write will consumed an entry, independently of how many
 // offsets are contained.
-func Create(dirPath string, maxIndexEntries int) (bl *BigLog, err error) {
-	err = os.Mkdir(dirPath, 0755)
+func Create(dirPath string, maxIndexEntries int) (*BigLog, error) {
+	err := os.Mkdir(dirPath, 0755)
 	if err != nil {
 		return nil, err
 	}

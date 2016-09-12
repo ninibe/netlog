@@ -65,9 +65,9 @@ const (
 
 var enc = binary.BigEndian
 
-// segment is the main abstraction over a block
-// of data composed by and index and a data file
-// The index file is memory mapped for fast access
+// A segment is the main abstraction over a block of data.
+// Each segment contains both a data and an index file.
+// The index file is memory mapped for fast access.
 type segment struct {
 	readers   *int32
 	indexPath string
@@ -84,41 +84,46 @@ type segment struct {
 	baseOffset int64  // global offset for the first entry in this segment
 	NdFO       int64  // next data file offset (dFO of NRO)
 	NRO        uint32 // next relative offset written
-	NiFO       uint32 // next index file offset (iFO of NRO)
+	NiFO       uint32 // next offset in the index file (iFO of NRO)
 
 	notify chan struct{} // channel to notify write events
 }
 
-// CreateSegment takes a folder path, a size of the index in bytes and the base offset
-// that will determinate the file names. Returns a pointer to the segment ready to go.
-func createSegment(dirPath string, maxIndexEntries int, baseOffset int64) (seg *segment, err error) {
+// createSegment creates and loads a new segment at the given dirPath.
+// baseOffset is used to determine the segments file names.
+// maxIndexEntries is the maximum number of entries which is used to allocate the
+// entire index file. The segment is immediately loaded and ready to be used if
+// no error is returned.
+func createSegment(dirPath string, maxIndexEntries int, baseOffset int64) (*segment, error) {
 	var (
-		iName = fmt.Sprintf(indexPattern, baseOffset)
-		dName = fmt.Sprintf(dataPattern, baseOffset)
-		iPath = filepath.Join(dirPath, iName)
-		dPath = filepath.Join(dirPath, dName)
+		idxName  = fmt.Sprintf(indexPattern, baseOffset)
+		dataName = fmt.Sprintf(dataPattern, baseOffset)
+		idxPath  = filepath.Join(dirPath, idxName)
+		dataPath = filepath.Join(dirPath, dataName)
 	)
 
-	err = createSegIndex(iPath, maxIndexEntries)
+	err := createSegIndex(idxPath, maxIndexEntries)
 	if err != nil {
 		return nil, err
 	}
 
-	err = createSegData(dPath)
+	err = createSegData(dataPath)
 	if err != nil {
 		return nil, err
 	}
 
-	return loadSegment(iPath)
+	return loadSegment(idxPath)
 }
 
-// LoadSegment loads a segment in memory from a path to the index file
-func loadSegment(indexPath string) (seg *segment, err error) {
-
+// loadSegment loads a segment given the path to its index file.
+// The path to the data file is calculated based on the given indexPath.
+// The returned segment is fully initialized and ready to be used
+// immediately if no error is returned.
+func loadSegment(indexPath string) (*segment, error) {
 	dirPath, indexName := filepath.Split(indexPath)
 
 	var baseOffset int64
-	_, err = fmt.Sscanf(indexName, indexPattern, &baseOffset)
+	_, err := fmt.Sscanf(indexName, indexPattern, &baseOffset)
 	if err != nil {
 		Logger.Printf("error: invalid index name '%s' %s", indexPath, err)
 		return nil, ErrLoadSegment
@@ -139,7 +144,7 @@ func loadSegment(indexPath string) (seg *segment, err error) {
 	}
 
 	var readers int32
-	seg = &segment{
+	seg := &segment{
 		readers:    &readers,
 		baseOffset: baseOffset,
 		indexFile:  indexFile,
@@ -164,6 +169,9 @@ func loadSegment(indexPath string) (seg *segment, err error) {
 	seg.setNextOffsets()
 	seg.setCreatedTS()
 
+	// TODO: when this is called via createSegment the index is
+	// created by createSegIndex which doesn't write this timestamp?!
+
 	return seg, nil
 }
 
@@ -172,30 +180,25 @@ func (s *segment) ReadAt(b []byte, off int64) (n int, err error) {
 	return s.dataFile.ReadAt(b, off)
 }
 
-// readOffsets reads the lasts offsets (entry and byte) used in the index,
+// setNextOffsets reads the last offsets (entry and byte) used in the index,
 // useful when loading an existing segment from disk.
 //
 // Segment index:
-//          00 01 | 0f ff | 00 10
-//          00 02 | 0f ff | 00 1b
-// NRO=5 -> 00 05 | 00 00 | 00 c2  <- NiFO=12 NdFO=c2
-//          00 00 | 00 00 | 00 00  <- Unused
+//            00 01 | 0f ff | 00 10
+//            00 02 | 0f ff | 00 1b
+//   NRO=5 -> 00 05 | 00 00 | 00 c2  <- NiFO=12 NdFO=c2
+//            00 00 | 00 00 | 00 00  <- Unused
 //
 func (s *segment) setNextOffsets() {
 	i := s.indexOfNRO()
-	iRO, _, dFO := readEntry(s.index[i:])
-
-	s.NRO = iRO
+	s.NRO, _, s.NdFO = readEntry(s.index[i:])
 	s.NiFO = uint32(i)
-	s.NdFO = dFO
-	return
 }
 
-// reads the TS from the first entry and sets it as created TS for the whole segment
+// setCreatedTS assigns the entire segments creation timestamp to be the
+// timestamp of the first index entry.
 func (s *segment) setCreatedTS() {
-	_, TS, _ := readEntry(s.index)
-	s.createdTS = TS
-	return
+	_, s.createdTS, _ = readEntry(s.index)
 }
 
 // WriteN writes a batch of N offsets
@@ -260,26 +263,39 @@ func (s *segment) updateIndex(entries uint32, length int64) {
 	}
 }
 
-// Writes entry to memory mapped file
-//                 ow                tw                iw
-//       iRO       |      iTS        |       dFO       |
-// [ 00 00 00 07 ]   [ 00 00 02 b1 ]   [ 00 00 02 b1 ]
-// [   0 : ow    ]   [   ow : tw   ]   [   tw : iw   ] <- mmap slice address
-func writeEntry(entry []byte, RO uint32, dFO int64) {
-	enc.PutUint32(entry[0:ow], RO)
-	enc.PutUint64(entry[tw:iw], uint64(dFO))
+// writeEntry writes the relative offset and data file offset into the entry.
+//
+// Memory layout of the entry:
+//                   ow                tw                iw
+//         iRO       |      iTS        |       dFO       |
+//   [ 00 00 00 07 ]   [ 00 00 02 b1 ]   [ 00 00 02 b1 ]
+//   [   0 : ow    ]   [   ow : tw   ]   [   tw : iw   ] <- mmap slice address
+//
+// Legend:
+//   iRO = relative offset
+//   iTS = unix timestamp
+//   dFO = data file offset
+//   ow  = offset width
+//   tw  = time-offset width
+//   iw  = complete index width
+func writeEntry(entry []byte, relativeOffset uint32, dataFileOffset int64) {
+	enc.PutUint32(entry[0:ow], relativeOffset)
+	enc.PutUint64(entry[tw:iw], uint64(dataFileOffset))
 }
 
-//  Writes entry timestamp
-func writeEntryTS(entry []byte, TS uint32) {
-	enc.PutUint32(entry[ow:tw], TS)
+// writeEntryTS writes the timestamp into an entry using the same memory layout
+// as writeEntry.
+func writeEntryTS(entry []byte, timestamp uint32) {
+	enc.PutUint32(entry[ow:tw], timestamp)
 }
 
-func readEntry(entry []byte) (RO, TS uint32, dFO int64) {
-	RO = enc.Uint32(entry[0:ow])
-	TS = enc.Uint32(entry[ow:tw])
-	dFO = int64(enc.Uint64(entry[tw:iw]))
-	return RO, TS, dFO
+// readEntry reads all information from a single entry using the memory layout
+// documented in the writeEntry function.
+func readEntry(entry []byte) (relativeOffset, timestamp uint32, dataFileOffset int64) {
+	relativeOffset = enc.Uint32(entry[0:ow])
+	timestamp = enc.Uint32(entry[ow:tw])
+	dataFileOffset = int64(enc.Uint64(entry[tw:iw]))
+	return
 }
 
 // Sync syncs underlying index and data files
@@ -415,7 +431,10 @@ func (s *segment) searchTS(TS uint32) (l *lookupRes) {
 	}
 }
 
-// indexOfNRO returns the file offset in the index of the entry that contains the next RO
+// indexOfNRO returns the relative offset within the index file at which the
+// next entry can be written.
+// Internally this uses binary search over the memory mapped index file to
+// find the first index entry that has a relative offset of zero.
 func (s *segment) indexOfNRO() int {
 	i := sort.Search(int(s.indexSize)/iw, func(i int) bool {
 		iRO, _, _ := readEntry(s.index[i*iw:])
@@ -522,6 +541,8 @@ func (s *segment) healthCheckPartialWrite() error {
 	return err
 }
 
+// createSegIndex creates a new index file at path initializing it
+// such that it fits maxIndexEntries.
 func createSegIndex(path string, maxIndexEntries int) error {
 	f, err := os.OpenFile(path, os.O_WRONLY|os.O_CREATE|os.O_EXCL, 0666)
 	if err != nil {
@@ -541,6 +562,7 @@ func createSegIndex(path string, maxIndexEntries int) error {
 	return err
 }
 
+// createSegData creates a new empty data file at the path.
 func createSegData(path string) error {
 	f, err := os.OpenFile(path, os.O_WRONLY|os.O_CREATE|os.O_EXCL, 0666)
 	if err != nil {
