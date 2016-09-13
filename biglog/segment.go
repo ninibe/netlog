@@ -173,9 +173,6 @@ func loadSegment(indexPath string) (*segment, error) {
 	seg.setNextOffsets()
 	seg.setCreatedTS()
 
-	// TODO: when this is called via createSegment the index is
-	// created by createSegIndex which doesn't write this timestamp?!
-
 	return seg, nil
 }
 
