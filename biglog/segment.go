@@ -331,11 +331,14 @@ func (s *segment) Close() error {
 		return ErrSegmentBusy
 	}
 
-	if err := s.dataFile.Close(); err != nil {
-		return err
+	dErr := s.dataFile.Close()
+	iErr := s.indexFile.Close()
+
+	if dErr != nil {
+		return dErr
 	}
 
-	return s.indexFile.Close()
+	return iErr
 }
 
 // Delete closes the segment and removes all underlying resources.
