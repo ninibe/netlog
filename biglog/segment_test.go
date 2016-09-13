@@ -157,3 +157,15 @@ func TestHealthCheckPartialWrite(t *testing.T) {
 		t.Errorf("data file not corrected from partial write, data: %s", data)
 	}
 }
+
+func TestCreateSegment_WithoutCreatedTS(t *testing.T) {
+	seg, err := createSegment(os.TempDir(), 128, 0)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	t.Log("seg.createdTS:", seg.createdTS)
+	if seg.createdTS == 0 {
+		t.Error("created timestamp of a new segment was not written")
+	}
+}
