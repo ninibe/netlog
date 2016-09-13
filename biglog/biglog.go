@@ -207,7 +207,7 @@ func (bl *BigLog) writeN(b []byte, n uint32) (written int, err error) {
 }
 
 // ReadFrom reads data from src into the currently active segment until EOF or
-// the first error. All read data is indexed as a singly entry. Splitting up
+// the first error. All read data is indexed as a single entry. Splitting up
 // the BigLog into more segments is handled transparently if the currently
 // active segment is full.
 // It returns the number of bytes written and any error encountered.
