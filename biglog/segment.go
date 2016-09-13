@@ -219,17 +219,12 @@ func (s *segment) WriteN(b []byte, n uint32) (written int, err error) {
 // write appends len(b) bytes to the segment.
 // ErrSegmentFull is returned if the segment is full.
 // Note that the index must be updated separately (using updateIndex)
-func (s *segment) write(b []byte) (n int, err error) {
+func (s *segment) write(b []byte) (int, error) {
 	if s.NiFO >= s.indexSize {
 		return 0, ErrSegmentFull
 	}
 
-	n, err = s.writer.Write(b)
-	if err != nil {
-		return 0, err // TODO what if the writer terminated early? can we just do: `return s.writer.Write(b)` ?
-	}
-
-	return n, err
+	return s.writer.Write(b)
 }
 
 // ReadFrom reads data from src until EOF or an error is encountered.
