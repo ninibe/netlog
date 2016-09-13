@@ -271,9 +271,9 @@ func (bl *BigLog) Name() string {
 	return bl.name
 }
 
-// Split creates a new segment in bl's dirPath using the maxIndexEntries of
-// the currently active segment starting at the highest available offset+1.
-// This new segment then becomes the new hot (active) segment.
+// Split creates a new segment in bl's dirPath starting at the highest
+// available offset+1. The new segment has the same size as the old one
+// and becomes the new hot (active) segment.
 func (bl *BigLog) Split() error {
 	bl.mu.Lock()
 	defer bl.mu.Unlock()
