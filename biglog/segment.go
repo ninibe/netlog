@@ -34,19 +34,19 @@ var Logger = log.New(os.Stderr, "BIGLOG ", log.LstdFlags)
 // TS: offset timestamp
 
 var (
-	// ErrSegmentFull is returned when the index does not have more capacity
+	// ErrSegmentFull is returned when the index does not have more capacity.
 	ErrSegmentFull = errors.New("bigfile: segment full")
 
-	// ErrSegmentBusy is returned trying to delete a segment that is being read
+	// ErrSegmentBusy is returned trying to delete a segment that is being read.
 	ErrSegmentBusy = errors.New("bigfile: segment busy")
 
-	// ErrLoadSegment is returned when segment files could not be loaded, the reason should be logged
+	// ErrLoadSegment is returned when segment files could not be loaded, the reason should be logged.
 	ErrLoadSegment = errors.New("bigfile: failed to load segment")
 
-	// ErrRONotFound is returned when the requested relative offset is not in the segment
+	// ErrRONotFound is returned when the requested relative offset is not in the segment.
 	ErrRONotFound = errors.New("bigfile: relative offset not found in segment")
 
-	// ErrROInvalid is returned when the requested offset is out of range
+	// ErrROInvalid is returned when the requested offset is out of range.
 	ErrROInvalid = errors.New("bigfile: invalid relative offset 0 < RO < 4294967295")
 )
 
@@ -179,7 +179,10 @@ func loadSegment(indexPath string) (*segment, error) {
 	return seg, nil
 }
 
-// ReadAt reads a single entry
+// ReadAt reads len(b) bytes from the data file starting at byte offset off.
+// It returns the number of bytes read and the error, if any.
+// ReadAt always returns a non-nil error when n < len(b).
+// At end of file, that error is io.EOF.
 func (s *segment) ReadAt(b []byte, off int64) (n int, err error) {
 	return s.dataFile.ReadAt(b, off)
 }
@@ -300,7 +303,10 @@ func readEntry(entry []byte) (relativeOffset, timestamp uint32, dataFileOffset i
 	return
 }
 
-// Sync syncs underlying index and data files
+// Sync flushes changes made to the data and index file to disk.
+// Without calling this method, there are no guarantees that changes made to
+// the segment are definitively persisted. Flushing is done synchronously
+// and will be finished once the function returns.
 func (s *segment) Sync() error {
 	if err := s.dataFile.Sync(); err != nil {
 		return err
@@ -314,12 +320,15 @@ func (s *segment) IsFull() bool {
 	return s.NiFO+iw >= s.indexSize
 }
 
-// IsBusy returns true when the segments has active readers
+// IsBusy returns true when the segments has at least one active reader.
 func (s *segment) IsBusy() bool {
 	return atomic.LoadInt32(s.readers) > 0
 }
 
-// Close closes underlying index and data files
+// Close closes the underlying index and data files.
+// If the segment still has active readers Close returns ErrSegmentBusy.
+// A segment can only be closed once and does not accept any reads or
+// writes after it has been closed successfully.
 func (s *segment) Close() error {
 	if s.IsBusy() {
 		return ErrSegmentBusy
@@ -332,8 +341,8 @@ func (s *segment) Close() error {
 	return s.indexFile.Close()
 }
 
-// Delete closes underlying resources and removes the files
-// set force to true, to ignore any closing errors and delete anyway
+// Delete closes the segment and removes all underlying resources.
+// Set force to true, to ignore any closing errors and delete all data anyway.
 func (s *segment) Delete(force bool) error {
 	if err := s.Close(); err != nil && !force {
 		return err
@@ -574,7 +583,7 @@ func createSegData(path string) error {
 	return f.Close()
 }
 
-// SegInfo holds segment information
+// SegInfo contains information about a segment as returned by segment.Info().
 type SegInfo struct {
 	FirstOffset int64     `json:"first_offset"`
 	DiskSize    int64     `json:"disk_size"`
@@ -582,7 +591,7 @@ type SegInfo struct {
 	ModTime     time.Time `json:"mod_time"`
 }
 
-// Info returns a SegInfo struct with all information about the segment
+// Info returns a SegInfo struct with all information about the segment.
 func (s *segment) Info() (*SegInfo, error) {
 
 	ifi, err := s.indexFile.Stat()
