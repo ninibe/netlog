@@ -54,7 +54,7 @@ type BigLog struct {
 
 	mu        sync.RWMutex
 	segs      []*segment
-	hotSeg    atomic.Value
+	hotSeg    atomic.Value // the currently active segment
 	bufioSize int
 
 	wmu      sync.Mutex
@@ -64,7 +64,7 @@ type BigLog struct {
 	readers atomic.Value
 }
 
-// SetOpts sets optinos after BigLog has been created
+// SetOpts sets options after BigLog has been created
 func (bl *BigLog) SetOpts(opts ...Option) {
 	for _, opt := range opts {
 		opt(bl)
@@ -81,8 +81,8 @@ type readerMap map[io.Closer]struct{}
 // a preallocated index file of disk size = maxIndexEntries * 4 bytes.
 // In the index each write will consumed an entry, independently of how many
 // offsets are contained.
-func Create(dirPath string, maxIndexEntries int) (bl *BigLog, err error) {
-	err = os.Mkdir(dirPath, 0755)
+func Create(dirPath string, maxIndexEntries int) (*BigLog, error) {
+	err := os.Mkdir(dirPath, 0755)
 	if err != nil {
 		return nil, err
 	}
@@ -100,9 +100,14 @@ func Create(dirPath string, maxIndexEntries int) (bl *BigLog, err error) {
 	return Open(dirPath)
 }
 
-// Open loads a biglog from disk
-func Open(dirPath string) (bl *BigLog, err error) {
-
+// Open loads a BigLog from disk by loading all segments from the index files
+// inside the given directory. The last segment - ordered by the base offset
+// encoded in the file names - is set to be the hot segment of the BigLog.
+// The created BigLog is ready to serve any watchers or readers immediately.
+//
+// ErrInvalid is returned if there are no index files within dirPath.
+// ErrLoadSegment is returned if a segment can not be loaded.
+func Open(dirPath string) (*BigLog, error) {
 	dirfs, err := ioutil.ReadDir(dirPath)
 	if err != nil {
 		return nil, err
@@ -120,7 +125,7 @@ func Open(dirPath string) (bl *BigLog, err error) {
 	}
 
 	dirPath, _ = filepath.Abs(dirPath)
-	bl = &BigLog{
+	bl := &BigLog{
 		name:    filepath.Base(dirPath),
 		dirPath: dirPath,
 		segs:    make([]*segment, 0),
@@ -156,7 +161,7 @@ func Open(dirPath string) (bl *BigLog, err error) {
 	return bl, err
 }
 
-// Segments lists the current log segments
+// segments lists the current log segments
 func (bl *BigLog) segments() []*segment {
 	bl.mu.RLock()
 	var segs = bl.segs
@@ -172,21 +177,26 @@ func (bl *BigLog) DirPath() string {
 	return bl.dirPath
 }
 
-// Write writes bytes to the current active segment
-func (bl *BigLog) Write(b []byte) (n int, err error) {
-	bl.mu.Lock()
-	defer bl.mu.Unlock()
-	return bl.writeN(b, 1)
+// Write writes len(b) bytes from b into the currently active segment of bl as
+// a single entry. Splitting up the BigLog into more segments is handled
+// transparently if the currently active segment is full.
+// It returns the number of bytes written from b (0 <= n <= len(b))
+// and any error encountered that caused the write to stop early.
+func (bl *BigLog) Write(b []byte) (written int, err error) {
+	return bl.WriteN(b, 1)
 }
 
-// WriteN writes a batch of N offsets to the biglog
+// WriteN writes a batch of n entries from b into the currently active segment.
+// Splitting up the BigLog into more segments is handled transparently if
+// the currently active segment is full.
+// It returns the number of bytes written from b (0 <= n <= len(b))
+// and any error encountered that caused the write to stop early.
 func (bl *BigLog) WriteN(b []byte, n int) (written int, err error) {
 	bl.mu.Lock()
 	defer bl.mu.Unlock()
 	return bl.writeN(b, uint32(n))
 }
 
-// WriteN writes a batch of N offsets to the biglog
 func (bl *BigLog) writeN(b []byte, n uint32) (written int, err error) {
 	err = bl.splitIfFull()
 	if err != nil {
@@ -196,8 +206,12 @@ func (bl *BigLog) writeN(b []byte, n uint32) (written int, err error) {
 	return bl.hotSeg.Load().(*segment).WriteN(b, n)
 }
 
-// ReadFrom reads data from r until EOF or error. Appending one entry to the index.
-func (bl *BigLog) ReadFrom(src io.Reader) (n int64, err error) {
+// ReadFrom reads data from src into the currently active segment until EOF or
+// the first error. All read data is indexed as a single entry. Splitting up
+// the BigLog into more segments is handled transparently if the currently
+// active segment is full.
+// It returns the number of bytes written and any error encountered.
+func (bl *BigLog) ReadFrom(src io.Reader) (written int64, err error) {
 	bl.mu.Lock()
 	defer bl.mu.Unlock()
 
@@ -209,8 +223,8 @@ func (bl *BigLog) ReadFrom(src io.Reader) (n int64, err error) {
 	return bl.hotSeg.Load().(*segment).ReadFrom(src)
 }
 
-// After returns the first offset after a given time
-func (bl *BigLog) After(t time.Time) (o int64, err error) {
+// After returns the first offset after a given time.
+func (bl *BigLog) After(t time.Time) (int64, error) {
 	bl.mu.RLock()
 	defer bl.mu.RUnlock()
 
@@ -222,22 +236,22 @@ func (bl *BigLog) After(t time.Time) (o int64, err error) {
 	return absolute(RO, seg.baseOffset), nil
 }
 
-// Oldest returns oldest/lowest available offset
-func (bl *BigLog) Oldest() (o int64) {
+// Oldest returns oldest/lowest available offset.
+func (bl *BigLog) Oldest() int64 {
 	bl.mu.RLock()
 	defer bl.mu.RUnlock()
 	return bl.segs[0].baseOffset
 }
 
-// Latest returns latest/highest available offset
-func (bl *BigLog) Latest() (o int64) {
+// Latest returns latest/highest available offset.
+func (bl *BigLog) Latest() int64 {
 	bl.mu.RLock()
 	defer bl.mu.RUnlock()
 	return bl.latest()
 }
 
-// Latest returns latest/highest available offset
-func (bl *BigLog) latest() (o int64) {
+// latest returns latest/highest available offset.
+func (bl *BigLog) latest() int64 {
 	hotSeg := bl.hotSeg.Load().(*segment)
 
 	// If there only one segment and it's empty
@@ -249,15 +263,18 @@ func (bl *BigLog) latest() (o int64) {
 	return absolute(hotSeg.NRO-1, hotSeg.baseOffset)
 }
 
-// Name returns the big log's name, which maps to the folder name
-func (bl *BigLog) Name() (s string) {
+// Name returns the big log's name, which maps to directory path that contains
+// the index and data files.
+func (bl *BigLog) Name() string {
 	bl.mu.RLock()
 	defer bl.mu.RUnlock()
 	return bl.name
 }
 
-// Split generates a new segment recipient of future writes
-func (bl *BigLog) Split() (err error) {
+// Split creates a new segment in bl's dirPath starting at the highest
+// available offset+1. The new segment has the same size as the old one
+// and becomes the new hot (active) segment.
+func (bl *BigLog) Split() error {
 	bl.mu.Lock()
 	defer bl.mu.Unlock()
 	return bl.split()
@@ -274,27 +291,26 @@ func (bl *BigLog) split() (err error) {
 	return bl.setHotSeg(seg)
 }
 
-// WriteN writes a batch of N offsets to the biglog
-func (bl *BigLog) splitIfFull() (err error) {
+// splitIfFull splits the BigLog if the currently active segment is full.
+func (bl *BigLog) splitIfFull() error {
 	if bl.hotSeg.Load().(*segment).IsFull() {
-		err = bl.split()
+		return bl.split()
 	}
 
-	return err
+	return nil
 }
 
-// Sync flushes all data to disk
-func (bl *BigLog) Sync() (err error) {
+// Sync flushes all data of the currently active segment to disk.
+func (bl *BigLog) Sync() error {
 	bl.mu.Lock()
 	defer bl.mu.Unlock()
 	return bl.sync()
 }
 
-func (bl *BigLog) sync() (err error) {
+func (bl *BigLog) sync() error {
 	hotSeg := bl.hotSeg.Load().(*segment)
 	if flusher, ok := hotSeg.writer.(ioFlusher); ok {
-		err = flusher.Flush()
-		if err != nil {
+		if err := flusher.Flush(); err != nil {
 			return err
 		}
 	}
@@ -328,7 +344,7 @@ func (bl *BigLog) setHotSeg(seg *segment) (err error) {
 	return err
 }
 
-// Trim removes the oldest segment from the biglog
+// Trim removes the oldest segment from the biglog.
 func (bl *BigLog) Trim() (err error) {
 	bl.mu.Lock()
 	defer bl.mu.Unlock()
@@ -345,9 +361,9 @@ func (bl *BigLog) Trim() (err error) {
 	return nil
 }
 
-// Close frees the all resources, rendering the BigLog
-// unusable without touching the data persisted on disk
-func (bl *BigLog) Close() (err error) {
+// Close frees the all resources, rendering the BigLog unusable without
+// touching the data persisted on disk.
+func (bl *BigLog) Close() error {
 	bl.mu.Lock()  // lock writes
 	bl.wmu.Lock() // lock new watchers
 	bl.rmu.Lock() // lock new readers
@@ -386,7 +402,7 @@ func (bl *BigLog) close(force bool) (err error) {
 	return nil
 }
 
-// Delete closes and the deletes all resources from disk
+// Delete closes bl and deletes all segments and all files stored on disk.
 func (bl *BigLog) Delete(force bool) (err error) {
 	bl.mu.Lock()  // lock writes
 	bl.wmu.Lock() // lock new watchers
@@ -448,7 +464,7 @@ func (bl *BigLog) locateTS(TS uint32) (seg *segment, RO uint32, err error) {
 	return seg, l.RO, nil
 }
 
-// dispatch change notifications to watchers
+// notify dispatches change notifications to watchers.
 func (bl *BigLog) notify() {
 	var hotSeg *segment
 	for {

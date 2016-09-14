@@ -14,32 +14,27 @@ import (
 	"time"
 )
 
-func TestCreateSegment(t *testing.T) {
+func init() {
 	rand.Seed(int64(time.Now().Nanosecond()))
+}
+
+func TestCreateSegment(t *testing.T) {
 	seg, err := createSegment(os.TempDir(), 128, rand.Int63())
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	_, err = seg.WriteN([]byte("firstsecond"), 2)
-	if err != nil {
-		t.Error(err)
+	mustWrite := func(s string, n uint32) {
+		_, err = seg.WriteN([]byte(s), n)
+		if err != nil {
+			t.Error(err)
+		}
 	}
 
-	_, err = seg.WriteN([]byte("third"), 1)
-	if err != nil {
-		t.Error(err)
-	}
-
-	_, err = seg.WriteN([]byte("fourth"), 1)
-	if err != nil {
-		t.Error(err)
-	}
-
-	_, err = seg.WriteN([]byte("fifth"), 1)
-	if err != nil {
-		t.Error(err)
-	}
+	mustWrite("firstsecond", 2)
+	mustWrite("third", 1)
+	mustWrite("fourth", 1)
+	mustWrite("fifth", 1)
 
 	buf := make([]byte, 1000)
 	_, err = seg.ReadAt(buf, 0)
@@ -69,7 +64,7 @@ func TestIndexOf(t *testing.T) {
 	// 2  - 20 - 100
 	// ...
 	// 9  - 90 - 800
-	i := 0
+	var i int
 	for i = 0; i < 10; i++ {
 		writeEntry(seg.index[i*iw:], uint32(i+1), int64(i*100))
 		writeEntryTS(seg.index[i*iw:], uint32(now+int64(i)*10))
