@@ -78,11 +78,12 @@ func (t *Topic) url() string {
 // Write writes p into a single entry in the topic.
 // Implements io.Reader interface.
 func (t *Topic) Write(p []byte) (int, error) {
-	return t.ReadFrom(bytes.NewReader(p))
+	n, err := t.ReadFrom(bytes.NewReader(p))
+	return int(n), err
 }
 
 // ReadFrom reads from r until io.EOF and writes a single entry to the topic with the data.
-func (t *Topic) ReadFrom(r io.Reader) (int, error) {
+func (t *Topic) ReadFrom(r io.Reader) (int64, error) {
 	endPoint := fmt.Sprintf("%s/payload", t.url())
 	req, err := http.NewRequest("POST", endPoint, r)
 	if err != nil {
@@ -98,7 +99,7 @@ func (t *Topic) ReadFrom(r io.Reader) (int, error) {
 	defer logClose(resp.Body)
 
 	if resp.StatusCode == http.StatusCreated {
-		return int(req.ContentLength), nil
+		return req.ContentLength, nil
 	}
 
 	return 0, decodeError(resp.Body)
