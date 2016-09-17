@@ -10,11 +10,15 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"io/ioutil"
 	"log"
 	"net/http"
+	"net/url"
+	"strconv"
 	"time"
 )
 
+// NewClient returns a NetLog client connecting to a given server address
 func NewClient(addr string) *Client {
 	return &Client{
 		addr:  addr,
@@ -22,11 +26,14 @@ func NewClient(addr string) *Client {
 	}
 }
 
+// Client is a NetLog client
 type Client struct {
 	addr  string
 	httpc *http.Client
 }
 
+// CreateTopic creates a new topic with a given name.
+// It will return an error if the topic already exist.
 func (c *Client) CreateTopic(name string) (*Topic, error) {
 	resp, err := c.httpc.Post(c.topicURL(name), "application/json", nil)
 	if err != nil {
@@ -34,7 +41,7 @@ func (c *Client) CreateTopic(name string) (*Topic, error) {
 	}
 
 	defer logClose(resp.Body)
-	if resp.StatusCode == 201 {
+	if resp.StatusCode == http.StatusCreated {
 		return &Topic{
 			name:   name,
 			client: c,
@@ -44,6 +51,9 @@ func (c *Client) CreateTopic(name string) (*Topic, error) {
 	return nil, decodeError(resp.Body)
 }
 
+// Topic returns a Topic by a given name.
+// The existence of the topic is not checked,
+// further operations to a non-existing topic will fail instead.
 func (c *Client) Topic(name string) *Topic {
 	return &Topic{
 		name:   name,
@@ -55,6 +65,7 @@ func (c *Client) topicURL(name string) string {
 	return fmt.Sprintf("%s/%s", c.addr, name)
 }
 
+// Topic represents a NetLog topic, a form of namespace.
 type Topic struct {
 	name   string
 	client *Client
@@ -64,19 +75,21 @@ func (t *Topic) url() string {
 	return t.client.topicURL(t.name)
 }
 
+// Write writes p into a single entry in the topic.
+// Implements io.Reader interface.
 func (t *Topic) Write(p []byte) (int, error) {
 	return t.ReadFrom(bytes.NewReader(p))
 }
 
-func (t *Topic) ReadFrom(r io.Reader) (int64, error) {
-	url := fmt.Sprintf("%s/payload", t.url())
-	req, err := http.NewRequest("POST", url, r)
+// ReadFrom reads from r until io.EOF and writes a single entry to the topic with the data.
+func (t *Topic) ReadFrom(r io.Reader) (int, error) {
+	endPoint := fmt.Sprintf("%s/payload", t.url())
+	req, err := http.NewRequest("POST", endPoint, r)
 	if err != nil {
 		return 0, err
 	}
 
 	req.Header.Set("Content-Type", "application/octet-stream")
-
 	resp, err := t.client.httpc.Do(req)
 	if err != nil {
 		return 0, err
@@ -84,25 +97,41 @@ func (t *Topic) ReadFrom(r io.Reader) (int64, error) {
 
 	defer logClose(resp.Body)
 
-	if resp.StatusCode == 201 {
-		return req.ContentLength, nil
+	if resp.StatusCode == http.StatusCreated {
+		return int(req.ContentLength), nil
 	}
 
-	return req.ContentLength, decodeError(resp.Body)
+	return 0, decodeError(resp.Body)
 }
 
+// TopicScanner reads one by one over the messages in a topic
+// blocking until new data is available for a period of time.
 type TopicScanner struct {
-	t  *Topic
-	id string
+	ID      string `json:"id"`
+	From    int64  `json:"from"`
+	Last    int64  `json:"last"`
+	Persist bool   `json:"persist"`
+
+	topic *Topic
+	buf   []byte
+	off   int64
+	err   error
 }
 
 // NewScanner creates a new scanner starting at offset `from`. If `persist` is true,
 // the scanner and it's state will survive server restarts
-func (t *Topic) NewScanner(from int64, persist bool) (*TopicScanner, error) {
-	req, err := http.NewRequest("POST", t.url(), nil)
+func (t *Topic) NewScanner(from string, persist bool) (*TopicScanner, error) {
+
+	endPoint := fmt.Sprintf("%s/scanner", t.url())
+	req, err := http.NewRequest("POST", endPoint, nil)
 	if err != nil {
-		return err
+		return nil, err
 	}
+
+	params := url.Values{}
+	params.Add("from", from)
+	params.Add("persist", fmt.Sprintf("%t", persist))
+	req.URL.RawQuery = params.Encode()
 
 	resp, err := t.client.httpc.Do(req)
 	if err != nil {
@@ -111,32 +140,84 @@ func (t *Topic) NewScanner(from int64, persist bool) (*TopicScanner, error) {
 
 	defer logClose(resp.Body)
 
-	if resp.StatusCode == 201 {
+	if resp.StatusCode == http.StatusCreated {
 		ts := &TopicScanner{}
 		dec := json.NewDecoder(resp.Body)
 		if err := dec.Decode(ts); err != nil {
 			return nil, errors.New("Unknown server response")
 		}
 
-		ts.t = t
+		ts.topic = t
 		return ts, nil
 	}
 
 	return nil, decodeError(resp.Body)
 }
 
-func (ts *TopicScanner) Scan() bool {
-	resp, err := ts.t.client.httpc.Get(ts.t.url())
+// Scan advances the Scanner to the next message, returning the message and the offset.
+// Scan will block when it reaches EOF until there is more data available for a time defined by `wait`.
+// `wait` takes text forms of time like "1day2h5s"
+func (ts *TopicScanner) Scan(wait string) bool {
+
+	endPoint := fmt.Sprintf("%s/scan", ts.topic.url())
+	req, err := http.NewRequest("GET", endPoint, nil)
 	if err != nil {
-		return nil, err
+		ts.err = err
+		return false
+	}
+
+	params := url.Values{}
+	params.Add("id", ts.ID)
+	if wait != "" {
+		params.Add("wait", wait)
+	}
+	req.URL.RawQuery = params.Encode()
+
+	resp, err := ts.topic.client.httpc.Do(req)
+	if err != nil {
+		ts.err = err
+		return false
 	}
 
 	defer logClose(resp.Body)
-	if resp.StatusCode != 200 {
-		return nil, decodeError(resp.Body)
+	if resp.StatusCode != http.StatusOK {
+		ts.err = decodeError(resp.Body)
+		return false
 	}
 
-	return nil, decodeError(resp.Body)
+	buf, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		ts.err = err
+		return false
+	}
+
+	ts.buf = buf
+	ts.off, err = strconv.ParseInt(resp.Header.Get("X-Offset"), 10, 0)
+	if err != nil {
+		ts.err = err
+		return false
+	}
+
+	return true
+}
+
+// Bytes returns content of the scanned entry.
+func (ts *TopicScanner) Bytes() []byte {
+	return ts.buf
+}
+
+// Offset returns the offset of the scanned entry.
+func (ts *TopicScanner) Offset() int64 {
+	return ts.off
+}
+
+// Err returns the first non-EOF error that was encountered by the Scanner.
+func (ts *TopicScanner) Err() error {
+	if ts.err == io.EOF {
+		return nil
+	}
+
+	return ts.err
 }
 
 func decodeError(r io.ReadCloser) error {
@@ -149,6 +230,7 @@ func decodeError(r io.ReadCloser) error {
 	return nlerr
 }
 
+// NLError is an error message returned by a NetLog server
 type NLError struct {
 	OK     bool   `json:"ok"`
 	Status int    `json:"status"`
