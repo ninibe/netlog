@@ -252,8 +252,10 @@ func (s *segment) updateIndex(entries uint32, length int64) {
 
 	// advance index offsets
 	s.NRO += entries
-	s.NiFO += iw
 	s.NdFO += length
+
+	// atomic access required for the index head as it's used by IndexReader
+	atomic.AddUint32(&s.NiFO, iw)
 
 	// Write next relative offset
 	writeEntry(s.index[s.NiFO:], s.NRO, s.NdFO)

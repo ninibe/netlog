@@ -178,17 +178,18 @@ func (r *IndexReader) ReadSection(maxOffsets, maxBytes int64) (is *IndexSection,
 }
 
 // Jump segment if we are at the end of the current one
-func (r *IndexReader) jumpSeg() (err error) {
-
-	if r.iFO == r.seg.NiFO {
-		seg := r.nextSeg()
-		if seg == nil {
-			return io.EOF
-		}
-
-		r.setSegment(seg)
-		r.iFO = 0
+func (r *IndexReader) jumpSeg() error {
+	if r.iFO < atomic.LoadUint32(&r.seg.NiFO) {
+		return nil
 	}
+
+	seg := r.nextSeg()
+	if seg == nil {
+		return io.EOF
+	}
+
+	r.setSegment(seg)
+	r.iFO = 0
 
 	return nil
 }
