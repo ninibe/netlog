@@ -35,19 +35,19 @@ var Logger = log.New(os.Stderr, "BIGLOG ", log.LstdFlags)
 
 var (
 	// ErrSegmentFull is returned when the index does not have more capacity.
-	ErrSegmentFull = errors.New("bigfile: segment full")
+	ErrSegmentFull = errors.New("biglog: segment full")
 
 	// ErrSegmentBusy is returned trying to delete a segment that is being read.
-	ErrSegmentBusy = errors.New("bigfile: segment busy")
+	ErrSegmentBusy = errors.New("biglog: segment busy")
 
 	// ErrLoadSegment is returned when segment files could not be loaded, the reason should be logged.
-	ErrLoadSegment = errors.New("bigfile: failed to load segment")
+	ErrLoadSegment = errors.New("biglog: failed to load segment")
 
 	// ErrRONotFound is returned when the requested relative offset is not in the segment.
-	ErrRONotFound = errors.New("bigfile: relative offset not found in segment")
+	ErrRONotFound = errors.New("biglog: relative offset not found in segment")
 
 	// ErrROInvalid is returned when the requested offset is out of range.
-	ErrROInvalid = errors.New("bigfile: invalid relative offset 0 < RO < 4294967295")
+	ErrROInvalid = errors.New("biglog: invalid relative offset 0 < RO < 4294967295")
 )
 
 var (

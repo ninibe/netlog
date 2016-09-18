@@ -19,21 +19,21 @@ import (
 
 var (
 	// ErrEmbeddedOffset is returned when the offset in embedded in a batch and can not be retrieved individually
-	ErrEmbeddedOffset = errors.New("bigfile: embedded offset")
+	ErrEmbeddedOffset = errors.New("biglog: embedded offset")
 
 	// ErrNotFound is returned when the requested offset is not in the log
-	ErrNotFound = errors.New("bigfile: offset not found")
+	ErrNotFound = errors.New("biglog: offset not found")
 
 	// ErrLastSegment is returned trying to delete the only segment in the biglog
 	// To delete all segments use BigLog.Delete()
-	ErrLastSegment = errors.New("bigfile: last segment can't be deleted")
+	ErrLastSegment = errors.New("biglog: last segment can't be deleted")
 
-	// ErrInvalid is returned when the big file format is not recognized
-	ErrInvalid = errors.New("bigfile: invalid bigfile")
+	// ErrInvalid is returned when the big log format is not recognized
+	ErrInvalid = errors.New("biglog: invalid biglog")
 
 	// ErrBusy is returned when there are active readers or watchers while trying
 	// to close/delete the biglog
-	ErrBusy = errors.New("bigfile: resource busy")
+	ErrBusy = errors.New("biglog: resource busy")
 )
 
 // Option is the type of function used to set internal parameters

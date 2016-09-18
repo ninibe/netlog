@@ -14,15 +14,15 @@ import (
 )
 
 // ErrInvalidIndexReader returned on read with nil pointers
-var ErrInvalidIndexReader = errors.New("bigfile: invalid reader - use NewIndexReader")
+var ErrInvalidIndexReader = errors.New("biglog: invalid reader - use NewIndexReader")
 
 // ErrNeedMoreBytes is returned by in the index reader when a single entry does not fit the requested byte limit
 // usually the client should double the size when possible and request again
-var ErrNeedMoreBytes = errors.New("bigfile: maxBytes too low for any entry")
+var ErrNeedMoreBytes = errors.New("biglog: maxBytes too low for any entry")
 
 // ErrNeedMoreOffsets is returned by in the index reader when a single entry does not fit the requested offset limit
 // usually the client should double the size when possible and request again
-var ErrNeedMoreOffsets = errors.New("bigfile: maxOffsets too low for any entry")
+var ErrNeedMoreOffsets = errors.New("biglog: maxOffsets too low for any entry")
 
 // IndexReader keeps the state among separate concurrent reads
 // IndexReaders handle segment transitions transparently
