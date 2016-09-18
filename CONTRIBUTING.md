@@ -21,4 +21,4 @@ Before submitting major changes, here are a few guidelines to follow:
 [issues]: https://github.com/ninibe/netlog/issues
 [prs]: https://github.com/ninibe/netlog/pulls
 
-For any further questions you can write to the author of this doc @gmail.com
+For any further questions you can write to the [netlog-dev mailing list](https://groups.google.com/forum/#!forum/netlog-dev).
