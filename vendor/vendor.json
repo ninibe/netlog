@@ -28,6 +28,141 @@
 			"revisionTime": "2016-02-25T18:16:46+01:00"
 		},
 		{
+			"path": "github.com/onsi/ginkgo",
+			"revision": "ac3d45ddd7ef5c4d7fc4d037b615a81f4d67981e",
+			"revisionTime": "2016-02-18T18:10:59-08:00"
+		},
+		{
+			"path": "github.com/onsi/ginkgo/config",
+			"revision": "ac3d45ddd7ef5c4d7fc4d037b615a81f4d67981e",
+			"revisionTime": "2016-02-18T18:10:59-08:00"
+		},
+		{
+			"path": "github.com/onsi/ginkgo/internal/codelocation",
+			"revision": "ac3d45ddd7ef5c4d7fc4d037b615a81f4d67981e",
+			"revisionTime": "2016-02-18T18:10:59-08:00"
+		},
+		{
+			"path": "github.com/onsi/ginkgo/internal/containernode",
+			"revision": "ac3d45ddd7ef5c4d7fc4d037b615a81f4d67981e",
+			"revisionTime": "2016-02-18T18:10:59-08:00"
+		},
+		{
+			"path": "github.com/onsi/ginkgo/internal/failer",
+			"revision": "ac3d45ddd7ef5c4d7fc4d037b615a81f4d67981e",
+			"revisionTime": "2016-02-18T18:10:59-08:00"
+		},
+		{
+			"path": "github.com/onsi/ginkgo/internal/leafnodes",
+			"revision": "ac3d45ddd7ef5c4d7fc4d037b615a81f4d67981e",
+			"revisionTime": "2016-02-18T18:10:59-08:00"
+		},
+		{
+			"path": "github.com/onsi/ginkgo/internal/remote",
+			"revision": "ac3d45ddd7ef5c4d7fc4d037b615a81f4d67981e",
+			"revisionTime": "2016-02-18T18:10:59-08:00"
+		},
+		{
+			"path": "github.com/onsi/ginkgo/internal/spec",
+			"revision": "ac3d45ddd7ef5c4d7fc4d037b615a81f4d67981e",
+			"revisionTime": "2016-02-18T18:10:59-08:00"
+		},
+		{
+			"path": "github.com/onsi/ginkgo/internal/specrunner",
+			"revision": "ac3d45ddd7ef5c4d7fc4d037b615a81f4d67981e",
+			"revisionTime": "2016-02-18T18:10:59-08:00"
+		},
+		{
+			"path": "github.com/onsi/ginkgo/internal/suite",
+			"revision": "ac3d45ddd7ef5c4d7fc4d037b615a81f4d67981e",
+			"revisionTime": "2016-02-18T18:10:59-08:00"
+		},
+		{
+			"path": "github.com/onsi/ginkgo/internal/testingtproxy",
+			"revision": "ac3d45ddd7ef5c4d7fc4d037b615a81f4d67981e",
+			"revisionTime": "2016-02-18T18:10:59-08:00"
+		},
+		{
+			"path": "github.com/onsi/ginkgo/internal/writer",
+			"revision": "ac3d45ddd7ef5c4d7fc4d037b615a81f4d67981e",
+			"revisionTime": "2016-02-18T18:10:59-08:00"
+		},
+		{
+			"path": "github.com/onsi/ginkgo/reporters",
+			"revision": "ac3d45ddd7ef5c4d7fc4d037b615a81f4d67981e",
+			"revisionTime": "2016-02-18T18:10:59-08:00"
+		},
+		{
+			"path": "github.com/onsi/ginkgo/reporters/stenographer",
+			"revision": "ac3d45ddd7ef5c4d7fc4d037b615a81f4d67981e",
+			"revisionTime": "2016-02-18T18:10:59-08:00"
+		},
+		{
+			"path": "github.com/onsi/ginkgo/types",
+			"revision": "ac3d45ddd7ef5c4d7fc4d037b615a81f4d67981e",
+			"revisionTime": "2016-02-18T18:10:59-08:00"
+		},
+		{
+			"path": "github.com/onsi/gomega",
+			"revision": "22d751277902f881e77ca3c65a0d3fead4bfc320",
+			"revisionTime": "2016-02-19T22:26:55-08:00"
+		},
+		{
+			"path": "github.com/onsi/gomega/format",
+			"revision": "22d751277902f881e77ca3c65a0d3fead4bfc320",
+			"revisionTime": "2016-02-19T22:26:55-08:00"
+		},
+		{
+			"path": "github.com/onsi/gomega/internal/assertion",
+			"revision": "22d751277902f881e77ca3c65a0d3fead4bfc320",
+			"revisionTime": "2016-02-19T22:26:55-08:00"
+		},
+		{
+			"path": "github.com/onsi/gomega/internal/asyncassertion",
+			"revision": "22d751277902f881e77ca3c65a0d3fead4bfc320",
+			"revisionTime": "2016-02-19T22:26:55-08:00"
+		},
+		{
+			"path": "github.com/onsi/gomega/internal/oraclematcher",
+			"revision": "22d751277902f881e77ca3c65a0d3fead4bfc320",
+			"revisionTime": "2016-02-19T22:26:55-08:00"
+		},
+		{
+			"path": "github.com/onsi/gomega/internal/testingtsupport",
+			"revision": "22d751277902f881e77ca3c65a0d3fead4bfc320",
+			"revisionTime": "2016-02-19T22:26:55-08:00"
+		},
+		{
+			"path": "github.com/onsi/gomega/matchers",
+			"revision": "22d751277902f881e77ca3c65a0d3fead4bfc320",
+			"revisionTime": "2016-02-19T22:26:55-08:00"
+		},
+		{
+			"path": "github.com/onsi/gomega/matchers/support/goraph/bipartitegraph",
+			"revision": "22d751277902f881e77ca3c65a0d3fead4bfc320",
+			"revisionTime": "2016-02-19T22:26:55-08:00"
+		},
+		{
+			"path": "github.com/onsi/gomega/matchers/support/goraph/edge",
+			"revision": "22d751277902f881e77ca3c65a0d3fead4bfc320",
+			"revisionTime": "2016-02-19T22:26:55-08:00"
+		},
+		{
+			"path": "github.com/onsi/gomega/matchers/support/goraph/node",
+			"revision": "22d751277902f881e77ca3c65a0d3fead4bfc320",
+			"revisionTime": "2016-02-19T22:26:55-08:00"
+		},
+		{
+			"path": "github.com/onsi/gomega/matchers/support/goraph/util",
+			"revision": "22d751277902f881e77ca3c65a0d3fead4bfc320",
+			"revisionTime": "2016-02-19T22:26:55-08:00"
+		},
+		{
+			"path": "github.com/onsi/gomega/types",
+			"revision": "22d751277902f881e77ca3c65a0d3fead4bfc320",
+			"revisionTime": "2016-02-19T22:26:55-08:00"
+		},
+		{
 			"path": "golang.org/x/net/context",
 			"revision": "4599ae7937fce9b670ce32b8ad32bbb7ae726b3e",
 			"revisionTime": "2016-02-20T14:44:54-08:00"
