@@ -34,10 +34,10 @@ var Logger = log.New(os.Stderr, "BIGLOG ", log.LstdFlags)
 // TS: offset timestamp
 
 var (
-	// ErrSegmentFull is returned when the index does not have more capacity.
+	// ErrSegmentFull is returned when the index does not have capacity left.
 	ErrSegmentFull = errors.New("biglog: segment full")
 
-	// ErrSegmentBusy is returned trying to delete a segment that is being read.
+	// ErrSegmentBusy is returned when trying to delete a segment that is being read.
 	ErrSegmentBusy = errors.New("biglog: segment busy")
 
 	// ErrLoadSegment is returned when segment files could not be loaded, the reason should be logged.
@@ -240,7 +240,7 @@ func (s *segment) ReadFrom(src io.Reader) (n int64, err error) {
 
 // updateIndex appends to the index file the new relative offset
 // `entries` represents the numbers of entries written. how much RO advances
-// `length` the total number of bytes written. how much dFO advances
+// `length` represents the total number of bytes written. how much dFO advances
 // A new index entry is created and NRO/watermark advanced
 func (s *segment) updateIndex(entries uint32, length int64) {
 	if s.NRO == 0 {
@@ -344,7 +344,7 @@ func (s *segment) Close() error {
 }
 
 // Delete closes the segment and removes all underlying resources.
-// Set force to true, to ignore any closing errors and delete all data anyway.
+// Set force to true to ignore any closing errors and delete all data anyway.
 func (s *segment) Delete(force bool) error {
 	if err := s.Close(); err != nil && !force {
 		return err
@@ -396,7 +396,7 @@ func (s *segment) Lookup(RO uint32) (l *lookupRes, err error) {
 	}
 
 	// malformed index
-	// if e.g: index max entry 7 has max relative offset 5 (0 means is not set),
+	// if e.g: index max entry 7 has max relative offset 5 (0 means it is not set),
 	// means that there are more entries written than offsets,
 	// which should not be possible.
 	if maxRO != 0 && maxRO < (RO-1) {
@@ -407,7 +407,7 @@ func (s *segment) Lookup(RO uint32) (l *lookupRes, err error) {
 	return s.searchRO(RO)
 }
 
-// If it the indexed relative offset [iRO] jumps to a lower
+// If the indexed relative offset [iRO] jumps to a lower
 // value, return iRO instead and an error indicating the offset is embedded.
 func (s *segment) searchRO(RO uint32) (l *lookupRes, err error) {
 	i := s.indexOfRO(RO)
@@ -458,7 +458,7 @@ func (s *segment) indexOfNRO() int {
 }
 
 // indexOfRO returns the file offset in the index of the entry that contains the given RO
-// if such entry does not exist, return the previous (lower) existing RO
+// if such an entry does not exist, return the previous (lower) existing RO
 func (s *segment) indexOfRO(RO uint32) int {
 	i := sort.Search(int(s.indexSize)/iw, func(i int) bool {
 		iRO, _, _ := readEntry(s.index[i*iw:])
@@ -469,7 +469,7 @@ func (s *segment) indexOfRO(RO uint32) int {
 }
 
 // indexOfTS returns the file offset in the index of the entry that contains the given TS
-// if such entry does not exist, return the next (higher) TS
+// if such an entry does not exist, return the next (higher) TS
 func (s *segment) indexOfTS(TS uint32) int {
 	i := sort.Search(int(s.indexSize)/iw, func(i int) bool {
 		_, iTS, _ := readEntry(s.index[i*iw:])
@@ -480,7 +480,7 @@ func (s *segment) indexOfTS(TS uint32) int {
 }
 
 // indexOfDFO returns the file offset in the index of the entry that contains the given dFO
-// if such entry does not exist, return the previous (lower) existing dFO
+// if such entry an does not exist, return the previous (lower) existing dFO
 func (s *segment) indexOfDFO(dFO int64) int {
 	// special case
 	if dFO == 0 {

@@ -12,7 +12,7 @@ import (
 	"sync/atomic"
 )
 
-// ErrInvalidReader returned on read with nil pointers
+// ErrInvalidReader is returned on read with nil pointers
 var ErrInvalidReader = errors.New("biglog: invalid reader - use NewReader")
 
 // Reader keeps the state among separate concurrent reads
@@ -51,7 +51,7 @@ func NewReader(bl *BigLog, from int64) (r *Reader, ret int64, err error) {
 	return r, ret, err
 }
 
-// Read bytes from the big log, offset is auto-incremented in every read
+// Read reads bytes from the big log, offset is auto-incremented in every read
 func (r *Reader) Read(b []byte) (n int, err error) {
 	r.mu.Lock()
 	defer r.mu.Unlock()

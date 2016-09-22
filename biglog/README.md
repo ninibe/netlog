@@ -1,8 +1,8 @@
 # BigLog
 
-BigLog is a high level abstraction on top os.File designed to store large amounts of data. BigLog is NetLog's core component, which can be embedded in any application.
+BigLog is a high level abstraction on top of os.File designed to store large amounts of data. BigLog is NetLog's core component, which can be embedded in any application.
 
-In a log-based queue, logs must be append-only. But most people eventually need to delete data, so instead of a single file we have several "segments". Every segment is just a data file with blob of bytes written to it and a companion index file. Indexes are preallocated in a fixed size every time a segment is created and memory-mapped. Each entry in the index has the format.
+In a log-based queue, logs must be append-only. But most people eventually need to delete data, so instead of a single file we have several "segments". Every segment is just a data file with blob of bytes written to it and a companion index file. Indexes are preallocated in a fixed size every time a segment is created and memory-mapped. Each entry in the index has the format:
 
 ### Index entry format
 
@@ -14,7 +14,7 @@ In a log-based queue, logs must be append-only. But most people eventually need 
 +---------------------------------------------------------------+
 ```
 
-Every segment has a base offset, and the index stores the relative offset to that base, with the first offset being always 1. The index can be sparse. The last element of the index is always the NEXT offset to be written, who's timestamp is not set.
+Every segment has a base offset, and the index stores the relative offset to that base, with the first offset being always 1. The index can be sparse. The last element of the index is always the NEXT offset to be written, whose timestamp is not set.
 
 ### Index example
 
@@ -30,9 +30,9 @@ Every segment has a base offset, and the index stores the relative offset to tha
 +-----------------------------------+     (size of the data file)
 ```
 
-The segment with the highest base offset is the "hot" segment, the only one who gets writes under the hood via Write() [io.Writer interface] for a single offset or WriteN() for N offsets. You can create a new hot segment calling Split(), and discard the oldest one calling Trim().
+The segment with the highest base offset is the "hot" segment, the only one which gets writes under the hood via Write() [io.Writer interface] for a single offset or WriteN() for N offsets. You can create a new hot segment calling Split(), and discard the oldest one calling Trim().
 
-There are 2 reading primitives, a Reader [io.Reader] which reads over the data files returning byte blobs, and an Index Reader which reads index files retuning entries. Both are initialized (multiple instances allowed) and operate separately.
+There are 2 reading primitives, a Reader [io.Reader] which reads over the data files returning byte blobs, and an Index Reader which reads index files returning entries. Both are initialized (multiple instances allowed) and operate separately.
 
 ```
                      +------------------+
@@ -49,6 +49,6 @@ There are 2 reading primitives, a Reader [io.Reader] which reads over the data f
                              +------------------+
 ```
 
-Readers will transparently jump through segments until their buffer is full or EOF is reached, they can be instantiated to start in any give offset with an specific entry in the index, if an embedded offset it requested the reader will start in the previous known offset position.
+Readers will transparently jump through segments until their buffer is full or EOF is reached, they can be instantiated to start at any give offset with a specific entry in the index, if an embedded offset is requested the reader will start in the previous known offset position.
 
 Based on these 2 readers, BigLog provides another 2 higher abstractions, Scanner and Streamer. [See the godocs](https://godoc.org/github.com/ninibe/netlog/biglog).
