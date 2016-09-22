@@ -13,7 +13,7 @@ import (
 	"time"
 )
 
-// ErrInvalidIndexReader returned on read with nil pointers
+// ErrInvalidIndexReader is returned on read with nil pointers
 var ErrInvalidIndexReader = errors.New("biglog: invalid reader - use NewIndexReader")
 
 // ErrNeedMoreBytes is returned by in the index reader when a single entry does not fit the requested byte limit
@@ -59,7 +59,7 @@ type Entry struct {
 	Size int
 }
 
-// NewIndexReader returns a IndexReader that will start reading from a given offset
+// NewIndexReader returns an IndexReader that will start reading from a given offset
 func NewIndexReader(bl *BigLog, from int64) (r *IndexReader, ret int64, err error) {
 	seg, RO, err := bl.locateOffset(from)
 	if err != nil {
@@ -85,7 +85,7 @@ func NewIndexReader(bl *BigLog, from int64) (r *IndexReader, ret int64, err erro
 }
 
 // ReadEntries reads n entries from the index. This method is useful when scanning single entries one by one
-// for streaming use is ReadSection is recommended
+// for streaming use, ReadSection is recommended
 func (r *IndexReader) ReadEntries(n int) (entries []*Entry, err error) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
@@ -119,9 +119,9 @@ func (r *IndexReader) ReadEntries(n int) (entries []*Entry, err error) {
 	return entries, err
 }
 
-// ReadSection reads section of the index that contains a maximum of offsets or bytes
+// ReadSection reads the section of the index that contains a maximum of offsets or bytes
 // it's lower precision than ReadEntries but better suited for streaming since it does not need to allocate
-// a Entry struct for every entry read in the index.
+// an Entry struct for every entry read in the index.
 func (r *IndexReader) ReadSection(maxOffsets, maxBytes int64) (is *IndexSection, err error) {
 	r.mu.Lock()
 	defer r.mu.Unlock()

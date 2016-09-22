@@ -30,7 +30,7 @@ type TopicScanner interface {
 }
 
 // NewTopicScanner returns a new topic scanner ready to scan starting at offset `from`,
-// if persist is true, the scanner and it's last position will survive across server restarts
+// if persist is true, the scanner and its last position will survive across server restarts
 func NewTopicScanner(t *Topic, ID string, from int64, persist bool) (TopicScanner, error) {
 	bts, err := newBLTopicScanner(t, ID, from)
 	if err != nil {

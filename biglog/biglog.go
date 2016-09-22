@@ -254,7 +254,7 @@ func (bl *BigLog) Latest() int64 {
 func (bl *BigLog) latest() int64 {
 	hotSeg := bl.hotSeg.Load().(*segment)
 
-	// If there only one segment and it's empty
+	// If there is only one segment and it's empty
 	if len(bl.segs) == 1 && hotSeg.NRO == 1 {
 		return -1 // no data
 	}
@@ -361,7 +361,7 @@ func (bl *BigLog) Trim() (err error) {
 	return nil
 }
 
-// Close frees the all resources, rendering the BigLog unusable without
+// Close frees all resources, rendering the BigLog unusable without
 // touching the data persisted on disk.
 func (bl *BigLog) Close() error {
 	bl.mu.Lock()  // lock writes

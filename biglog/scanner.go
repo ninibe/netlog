@@ -11,7 +11,7 @@ import (
 
 // Scanner facilitates reading a BigLog's content one index entry at a time.
 // Instantiate always via NewScanner. A scanner is NOT thread-safe, to use
-// is concurrently your application must protect it with a mutex.
+// it concurrently your application must protect it with a mutex.
 type Scanner struct {
 	token      []byte
 	buf        []byte
@@ -30,7 +30,7 @@ type ScannerOption func(*Scanner)
 
 // UseBuffer option facilitates to bring your own buffer to the scanner,
 // if the buffer is not big enough for an entry it will be replaced
-// with a bigger one. You can prevent this behaviours setting
+// with a bigger one. You can prevent this behaviours by setting
 // MaxBufferSize to len(buf).
 func UseBuffer(buf []byte) ScannerOption {
 	return func(s *Scanner) {
@@ -39,7 +39,7 @@ func UseBuffer(buf []byte) ScannerOption {
 }
 
 // MaxBufferSize option defines the maximum buffer size that the
-// scanner is allowed to use. If an entry is lager than the max buffer
+// scanner is allowed to use. If an entry is larger than the max buffer
 // scanning will fail with error ErrTooLong. Default size 0 means no limit.
 func MaxBufferSize(size int) ScannerOption {
 	return func(s *Scanner) {
@@ -50,7 +50,7 @@ func MaxBufferSize(size int) ScannerOption {
 // ErrEntryTooLong is returned when the entry is too big to fit in the allowed buffer size.
 var ErrEntryTooLong = errors.New("biglog.Scanner: entry too long")
 
-// ErrInvalidScanner returned when using an uninitialized scanner.
+// ErrInvalidScanner is returned when using an uninitialized scanner.
 var ErrInvalidScanner = errors.New("biglog: invalid reader - use NewScanner")
 
 // NewScanner returns a new Scanner starting at `from` offset.
@@ -210,7 +210,7 @@ func (s *Scanner) Offset() int64 {
 	return s.entry.Offset
 }
 
-// ODelta returns the numbers of offsets included in the scanned entry.
+// ODelta returns the number of offsets included in the scanned entry.
 func (s *Scanner) ODelta() int {
 	if s.entry == nil {
 		return 0

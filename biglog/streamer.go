@@ -81,7 +81,7 @@ func NewStreamer(bl *BigLog, from int64) (s *Streamer, err error) {
 }
 
 // Get given a maximum number of offsets and a maximum number of bytes, returns a StreamDelta
-// for the biggest chunk of that satisfied the limits until EOF. If the next entry is too big
+// for the biggest chunk that satisfied the limits until EOF. If the next entry is too big
 // for either limit, either ErrNeedMoreOffsets or ErrNeedMoreBytes is returned.
 // IMPORTANT: The StreamDelta must be "Put" back before a new one can issued.
 func (st *Streamer) Get(maxOffsets, maxBytes int64) (delta *StreamDelta, err error) {
@@ -105,7 +105,7 @@ func (st *Streamer) Get(maxOffsets, maxBytes int64) (delta *StreamDelta, err err
 	return delta, err
 }
 
-// Put must be called once and StreamDelta has been successfully read
+// Put must be called once StreamDelta has been successfully read
 // so the reader can advance and a new StreamDelta can be issued.
 func (st *Streamer) Put(delta *StreamDelta) (err error) {
 	defer st.mu.Unlock()

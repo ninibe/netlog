@@ -153,7 +153,7 @@ type ioFlusher interface {
 }
 
 // FlushBuffered flushes all buffered messages into the BigLog.
-// Notice that the BigLog might have a buffer on it's own that this
+// Notice that the BigLog might have a buffer on its own that this
 // function does not flush, so calling this does not mean the data
 // has been stored on disk.
 func (t *Topic) FlushBuffered() error {
