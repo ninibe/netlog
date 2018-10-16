@@ -381,6 +381,10 @@ func (s *segment) Lookup(RO uint32) (l *lookupRes, err error) {
 	// highest possible entry in the index for this relative offset.
 	// it should be an exact match if there was no batching.
 	maxIFO := (RO - 1) * iw
+	// if the highest possible entry is bigger than the index itself bail.
+	if len(s.index) < int(maxIFO) {
+		return s.searchRO(RO)
+	}
 	maxRO, TS, dFO := readEntry(s.index[maxIFO:])
 
 	// found it!
