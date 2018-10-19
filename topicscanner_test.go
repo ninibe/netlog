@@ -51,7 +51,8 @@ func TestTopicScanner(t *testing.T) {
 	ts, err := topic.NewScanner(0, false)
 	panicOn(err)
 
-	ctx, _ := context.WithTimeout(context.Background(), time.Minute)
+	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
+	defer cancel()
 
 	for o, m := range output {
 		data, offset, err2 := ts.Scan(ctx)
