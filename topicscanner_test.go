@@ -6,10 +6,9 @@ package netlog
 
 import (
 	"bytes"
+	"context"
 	"testing"
 	"time"
-
-	"golang.org/x/net/context"
 )
 
 func TestTopicScanner(t *testing.T) {

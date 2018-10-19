@@ -1,9 +1,8 @@
 package netlog
 
 import (
+	"context"
 	"testing"
-
-	"golang.org/x/net/context"
 )
 
 func TestCheckMessageIntegrity(t *testing.T) {

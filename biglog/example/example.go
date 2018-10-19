@@ -4,10 +4,9 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
+	"log"
 	"os"
 	"time"
-
-	"log"
 
 	"github.com/ninibe/netlog/biglog"
 )

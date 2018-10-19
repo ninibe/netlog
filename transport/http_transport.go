@@ -5,6 +5,7 @@
 package transport
 
 import (
+	"context"
 	"encoding/json"
 	"io"
 	"io/ioutil"
@@ -15,8 +16,6 @@ import (
 	"time"
 
 	"github.com/julienschmidt/httprouter"
-	"golang.org/x/net/context"
-
 	"github.com/ninibe/bigduration"
 	"github.com/ninibe/netlog"
 )

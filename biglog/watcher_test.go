@@ -5,10 +5,9 @@
 package biglog
 
 import (
+	"sync/atomic"
 	"testing"
 	"time"
-
-	"sync/atomic"
 )
 
 func TestNewWatcher(t *testing.T) {

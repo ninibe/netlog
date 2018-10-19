@@ -5,6 +5,7 @@
 package netlog
 
 import (
+	"context"
 	"encoding/binary"
 	"fmt"
 	"io"
@@ -16,10 +17,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/ninibe/bigduration"
-	"golang.org/x/net/context"
-
 	"github.com/comail/go-uuid/uuid"
+	"github.com/ninibe/bigduration"
 	"github.com/ninibe/netlog/biglog"
 )
 

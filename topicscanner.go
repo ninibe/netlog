@@ -5,13 +5,12 @@
 package netlog
 
 import (
+	"context"
 	"fmt"
 	"log"
 	"os"
 	"path/filepath"
 	"sync"
-
-	"golang.org/x/net/context"
 
 	"github.com/ninibe/netlog/biglog"
 )

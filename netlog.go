@@ -13,7 +13,6 @@ import (
 	"time"
 
 	"github.com/ninibe/bigduration"
-
 	"github.com/ninibe/netlog/biglog"
 )
 
