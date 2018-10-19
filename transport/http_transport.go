@@ -45,7 +45,6 @@ func (ht *HTTPTransport) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	router.GET("/:topic/check", withCtx(ht.handleCheckTopic))
 	router.DELETE("/:topic", ht.handleDeleteTopic)
 	router.ServeHTTP(w, r)
-	return
 }
 
 // ctxHandle is the signature a context-friendly http handler.
