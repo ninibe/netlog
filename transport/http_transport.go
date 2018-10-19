@@ -226,7 +226,8 @@ func (ht *HTTPTransport) handleScanTopic(ctx context.Context, w http.ResponseWri
 		timeout = bd.Duration()
 	}
 
-	ctx, _ = context.WithTimeout(ctx, timeout)
+	ctx, cancel := context.WithTimeout(ctx, timeout)
+	defer cancel()
 	m, o, err := sc.Scan(ctx)
 	if err != nil {
 		JSONErrorResponse(w, err)
