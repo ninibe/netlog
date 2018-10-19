@@ -41,33 +41,10 @@ func (ht *HTTPTransport) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	router.GET("/:topic/sync", ht.handleSync)
 	router.POST("/:topic/scanner", ht.handleCreateScanner)
 	router.DELETE("/:topic/scanner", ht.handleDeleteScanner)
-	router.GET("/:topic/scan", withCtx(ht.handleScanTopic))
-	router.GET("/:topic/check", withCtx(ht.handleCheckTopic))
+	router.GET("/:topic/scan", ht.handleScanTopic)
+	router.GET("/:topic/check", ht.handleCheckTopic)
 	router.DELETE("/:topic", ht.handleDeleteTopic)
 	router.ServeHTTP(w, r)
-}
-
-// ctxHandle is the signature a context-friendly http handler.
-type ctxHandle func(context.Context, http.ResponseWriter, *http.Request, httprouter.Params)
-
-// withCtx is a wrapper function to inject a context into an http handler
-// the context gets canceled if the http connection is closed by the client.
-func withCtx(handle ctxHandle) httprouter.Handle {
-	ctx := context.Background()
-	return func(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
-		var cancel context.CancelFunc
-		ctx, cancel = context.WithCancel(ctx)
-		clientGone := w.(http.CloseNotifier).CloseNotify()
-		go func() {
-			select {
-			case <-ctx.Done():
-			case <-clientGone:
-				cancel()
-			}
-		}()
-
-		handle(ctx, w, r, ps)
-	}
 }
 
 func (ht *HTTPTransport) handleCreateTopic(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
@@ -197,7 +174,7 @@ func (ht *HTTPTransport) handleDeleteTopic(w http.ResponseWriter, r *http.Reques
 	JSONOKResponse(w, "topic deleted")
 }
 
-func (ht *HTTPTransport) handleScanTopic(ctx context.Context, w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
+func (ht *HTTPTransport) handleScanTopic(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
 	t, err := ht.nl.Topic(ps.ByName("topic"))
 	if err != nil {
 		JSONErrorResponse(w, err)
@@ -226,7 +203,7 @@ func (ht *HTTPTransport) handleScanTopic(ctx context.Context, w http.ResponseWri
 		timeout = bd.Duration()
 	}
 
-	ctx, cancel := context.WithTimeout(ctx, timeout)
+	ctx, cancel := context.WithTimeout(r.Context(), timeout)
 	defer cancel()
 	m, o, err := sc.Scan(ctx)
 	if err != nil {
@@ -290,7 +267,7 @@ func (ht *HTTPTransport) handleDeleteScanner(w http.ResponseWriter, r *http.Requ
 	JSONOKResponse(w, "scanner deleted")
 }
 
-func (ht *HTTPTransport) handleCheckTopic(ctx context.Context, w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
+func (ht *HTTPTransport) handleCheckTopic(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
 	t, err := ht.nl.Topic(ps.ByName("topic"))
 	if err != nil {
 		JSONErrorResponse(w, err)
@@ -303,7 +280,7 @@ func (ht *HTTPTransport) handleCheckTopic(ctx context.Context, w http.ResponseWr
 		return
 	}
 
-	iErrs, err := t.CheckIntegrity(ctx, from)
+	iErrs, err := t.CheckIntegrity(r.Context(), from)
 	if err != nil {
 		JSONErrorResponse(w, netlog.ErrBadRequest)
 		return
