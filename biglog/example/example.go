@@ -91,6 +91,8 @@ func step3() {
 
 	// Read the entries stored
 	entries, err := ir.ReadEntries(10)
+	panicOn(err)
+
 	println("Entries:")
 	for _, entry := range entries {
 		fmt.Printf("%+v\n", entry)

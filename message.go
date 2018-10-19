@@ -63,7 +63,7 @@ func MessageSet(msgs []Message, comp CompressionType) Message {
 		w = gzip.NewWriter(buf)
 
 	case CompressionSnappy:
-		w = snappy.NewWriter(buf)
+		w = snappy.NewBufferedWriter(buf)
 
 	default:
 		panic("invalid compression type")

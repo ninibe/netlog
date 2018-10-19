@@ -150,6 +150,10 @@ func TestNewBigLog(t *testing.T) {
 	}
 
 	sc, err := biglog.NewScanner(bl, 0, biglog.UseBuffer(make([]byte, 10)))
+	if err != nil {
+		t.Error(err)
+	}
+
 	for i := 0; i < 10; i++ {
 		if !sc.Scan() {
 			if i != 6 {

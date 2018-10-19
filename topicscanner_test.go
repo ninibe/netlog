@@ -103,11 +103,6 @@ func TestScannerInfo(t *testing.T) {
 
 	messages := randMessageSet()[:3]
 
-	var sequence []byte
-	for _, m := range messages {
-		sequence = append(sequence, m.Bytes()...)
-	}
-
 	for _, m := range messages {
 		_, err = topic.Write(m)
 		panicOn(err)

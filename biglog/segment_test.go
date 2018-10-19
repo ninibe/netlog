@@ -140,6 +140,8 @@ func TestHealthCheckPartialWrite(t *testing.T) {
 	panicOn(err)
 
 	data, err := ioutil.ReadAll(seg.dataFile)
+	panicOn(err)
+
 	if string(data) != "sometestdatabypassing the index update" {
 		t.Fatalf("can not test HealthCheckPartialWrite, data: %s", data)
 	}
@@ -153,6 +155,8 @@ func TestHealthCheckPartialWrite(t *testing.T) {
 	panicOn(err)
 
 	data, err = ioutil.ReadAll(seg.dataFile)
+	panicOn(err)
+
 	if string(data) != "sometestdata" {
 		t.Errorf("data file not corrected from partial write, data: %s", data)
 	}

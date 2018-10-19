@@ -21,6 +21,7 @@ func TestSetGetPayload(t *testing.T) {
 	// CREATE TOPIC
 	topicURL := fmt.Sprintf("%s/test", ts.URL)
 	req, err := http.NewRequest("POST", topicURL, nil)
+	panicOn(err)
 	r, err := http.DefaultClient.Do(req)
 	if err != nil {
 		t.Error(err)
@@ -72,6 +73,7 @@ func TestSetGetPayload(t *testing.T) {
 	wg.Wait()
 	topicURL = fmt.Sprintf("%s/test", ts.URL)
 	req, err = http.NewRequest("DELETE", topicURL, nil)
+	panicOn(err)
 	_, err = http.DefaultClient.Do(req)
 	panicOn(err)
 }
