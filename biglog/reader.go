@@ -77,7 +77,7 @@ func (r *Reader) Read(b []byte) (n int, err error) {
 		}
 
 		r.setSegment(seg)
-		r.dFO = 0
+		r.dFO = headerSize
 		sumn += n
 	}
 

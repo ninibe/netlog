@@ -90,7 +90,7 @@ func MessageSet(msgs []Message, comp CompressionType) Message {
 // Message the unit of data storage.
 type Message []byte
 
-// CompVer returns the first byte which reflects both compression a format version.
+// CompVer returns the first byte which reflects both compression and format version.
 func (m *Message) CompVer() uint8 {
 	return m.Bytes()[compverPos]
 }

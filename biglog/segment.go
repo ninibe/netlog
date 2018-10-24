@@ -147,6 +147,12 @@ func loadSegment(indexPath string) (*segment, error) {
 		return nil, ErrLoadSegment
 	}
 
+	sh, err := readSegHeader(dataFile)
+	if err != nil {
+		Logger.Printf("error: '%s' %s", dataPath, err)
+		return nil, ErrLoadSegment
+	}
+
 	var readers int32
 	seg := &segment{
 		readers:    &readers,
@@ -155,6 +161,7 @@ func loadSegment(indexPath string) (*segment, error) {
 		indexPath:  indexPath,
 		dataFile:   dataFile,
 		dataPath:   dataPath,
+		createdTS:  sh.createdTS(),
 		writer:     dataFile,
 		notify:     make(chan struct{}, 1),
 	}
@@ -536,6 +543,7 @@ func (s *segment) healthCheckPartialWrite() error {
 	// copy only known data
 	_, _ = s.dataFile.Seek(0, 0)
 	written, err := io.Copy(tmpDataFile, io.LimitReader(s.dataFile, s.NdFO))
+	log.Printf("alert: Needed to write %d bytes. Wrote %d bytes Err: %s", s.NdFO, written, err)
 	if err != nil {
 		log.Printf("alert: Needed to write %d bytes. Wrote %d bytes Err: %s", s.NdFO, written, err)
 		return err
@@ -573,7 +581,7 @@ func createSegIndex(path string, maxIndexEntries int) error {
 	}()
 
 	init := make([]byte, maxIndexEntries*iw)
-	writeEntry(init, 1, 0)
+	writeEntry(init, 1, headerSize)
 	_, err = f.Write(init)
 
 	return err
@@ -582,6 +590,12 @@ func createSegIndex(path string, maxIndexEntries int) error {
 // createSegData creates a new empty data file at the path.
 func createSegData(path string) error {
 	f, err := os.OpenFile(path, os.O_WRONLY|os.O_CREATE|os.O_EXCL, 0666)
+	if err != nil {
+		return err
+	}
+
+	sh := newSegHeader()
+	err = sh.write(f)
 	if err != nil {
 		return err
 	}
