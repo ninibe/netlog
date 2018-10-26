@@ -530,12 +530,7 @@ func (s *segment) healthCheckPartialWrite() error {
 
 	/// prepare new data file
 	tmpDataPath := s.dataPath + ".temp"
-	err = createSegData(tmpDataPath)
-	if err != nil {
-		return err
-	}
-
-	tmpDataFile, err := os.OpenFile(tmpDataPath, os.O_RDWR|os.O_APPEND, 0666)
+	tmpDataFile, err := os.OpenFile(tmpDataPath, os.O_WRONLY|os.O_CREATE|os.O_EXCL, 0666)
 	if err != nil {
 		return err
 	}
@@ -543,7 +538,6 @@ func (s *segment) healthCheckPartialWrite() error {
 	// copy only known data
 	_, _ = s.dataFile.Seek(0, 0)
 	written, err := io.Copy(tmpDataFile, io.LimitReader(s.dataFile, s.NdFO))
-	log.Printf("alert: Needed to write %d bytes. Wrote %d bytes Err: %s", s.NdFO, written, err)
 	if err != nil {
 		log.Printf("alert: Needed to write %d bytes. Wrote %d bytes Err: %s", s.NdFO, written, err)
 		return err
