@@ -136,7 +136,7 @@ func Open(dirPath string) (*BigLog, error) {
 	bl.hotSeg.Store(hotSeg)
 
 	// sort by index file name, should reflect base offset
-	sort.Sort(sort.StringSlice(indexes))
+	sort.Strings(indexes)
 	var seg *segment
 	for _, index := range indexes {
 		seg, err = loadSegment(filepath.Join(dirPath, index))
@@ -154,8 +154,8 @@ func Open(dirPath string) (*BigLog, error) {
 	}
 
 	err = bl.setHotSeg(hotSeg)
-	bl.watchers.Store(make(watcherMap, 0))
-	bl.readers.Store(make(readerMap, 0))
+	bl.watchers.Store(make(watcherMap))
+	bl.readers.Store(make(readerMap))
 	go bl.notify()
 
 	return bl, err

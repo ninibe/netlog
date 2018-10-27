@@ -13,7 +13,6 @@ import (
 	"time"
 
 	"comail.io/go/colog"
-
 	"github.com/ninibe/bigduration"
 )
 

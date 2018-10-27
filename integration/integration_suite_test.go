@@ -5,17 +5,15 @@ import (
 	"io/ioutil"
 	"net/http"
 	"os"
+	"testing"
 	"time"
-
-	"golang.org/x/net/http2"
 
 	"github.com/ninibe/bigduration"
 	"github.com/ninibe/netlog"
 	"github.com/ninibe/netlog/transport"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
-
-	"testing"
+	"golang.org/x/net/http2"
 )
 
 func TestIntegration(t *testing.T) {

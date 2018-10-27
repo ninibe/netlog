@@ -37,7 +37,7 @@ func TestCreateSegment(t *testing.T) {
 	mustWrite("fifth", 1)
 
 	buf := make([]byte, 1000)
-	_, err = seg.ReadAt(buf, 0)
+	_, err = seg.ReadAt(buf, headerSize)
 	if err != io.EOF {
 		t.Error(err)
 	}
@@ -133,13 +133,19 @@ func TestHealthCheckPartialWrite(t *testing.T) {
 	_, err = seg.WriteN([]byte("data"), 1)
 	panicOn(err)
 
+	// internal direct write method to file
 	_, err = seg.write([]byte("bypassing the index update"))
 	panicOn(err)
 
 	_, err = seg.dataFile.Seek(0, 0)
 	panicOn(err)
 
+	sh, err := readSegHeader(seg.dataFile)
+	panicOn(err)
+
 	data, err := ioutil.ReadAll(seg.dataFile)
+	panicOn(err)
+
 	if string(data) != "sometestdatabypassing the index update" {
 		t.Fatalf("can not test HealthCheckPartialWrite, data: %s", data)
 	}
@@ -149,10 +155,12 @@ func TestHealthCheckPartialWrite(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	_, err = seg.dataFile.Seek(0, 0)
+	_, err = seg.dataFile.Seek(int64(sh.len()), 0)
 	panicOn(err)
 
 	data, err = ioutil.ReadAll(seg.dataFile)
+	panicOn(err)
+
 	if string(data) != "sometestdata" {
 		t.Errorf("data file not corrected from partial write, data: %s", data)
 	}

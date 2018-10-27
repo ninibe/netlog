@@ -5,11 +5,11 @@
 package netlog
 
 import (
+	"context"
 	"hash/crc32"
 	"strconv"
 
 	"github.com/ninibe/netlog/biglog"
-	"golang.org/x/net/context"
 )
 
 // IntegrityErrorType is the category of possible errors in the data.

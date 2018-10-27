@@ -51,7 +51,7 @@ func TestScanner(t *testing.T) {
 				}
 
 				if sc.Offset() != offset {
-					t.Fatalf("Bad offset Actual: %d\n Expected: %d\n Prev: %d \n",
+					t.Errorf("Bad offset Actual: %d\n Expected: %d\n Prev: %d \n",
 						sc.Offset(),
 						offset,
 						prevOffset,
@@ -64,7 +64,7 @@ func TestScanner(t *testing.T) {
 					fmt.Printf("%d => %s \n \n", k, data[k])
 					defer wg.Done()
 
-					t.Fatalf("fatal payload read i=%d k=%d offset=%d delta=%d error:\n"+
+					t.Errorf("fatal payload read i=%d k=%d offset=%d delta=%d error:\n"+
 						" Actual: % x\n Expected: % x\n Prev: % x \n  prevOffset=%d prevDelta=%d \n",
 						i,
 

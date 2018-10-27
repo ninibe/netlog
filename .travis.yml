@@ -1,21 +1,22 @@
 language: go
 
 go:
-  - 1.7
+  - 1.9
+  - 1.11
   - tip
 
 
 before_install:
   - go get github.com/kardianos/govendor
   - go get golang.org/x/tools/cmd/goimports
-  - go get github.com/golang/lint/golint
+  - go get golang.org/x/lint/golint
   - go get github.com/kisielk/errcheck
   - go get github.com/mattn/goveralls
   - go get github.com/opennota/check/cmd/structcheck
   - go get github.com/opennota/check/cmd/varcheck
   - go get github.com/jgautheron/goconst/cmd/goconst
-  - go get honnef.co/go/simple/cmd/gosimple
-  - go get honnef.co/go/staticcheck/cmd/staticcheck
+  - go get honnef.co/go/tools/cmd/gosimple
+  - go get honnef.co/go/tools/cmd/staticcheck
   - go get github.com/onsi/ginkgo/ginkgo
   - go get github.com/onsi/gomega
 

@@ -6,10 +6,9 @@ package netlog
 
 import (
 	"bytes"
+	"context"
 	"testing"
 	"time"
-
-	"golang.org/x/net/context"
 )
 
 func TestTopicScanner(t *testing.T) {
@@ -52,7 +51,8 @@ func TestTopicScanner(t *testing.T) {
 	ts, err := topic.NewScanner(0, false)
 	panicOn(err)
 
-	ctx, _ := context.WithTimeout(context.Background(), time.Minute)
+	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
+	defer cancel()
 
 	for o, m := range output {
 		data, offset, err2 := ts.Scan(ctx)
@@ -103,11 +103,6 @@ func TestScannerInfo(t *testing.T) {
 	}()
 
 	messages := randMessageSet()[:3]
-
-	var sequence []byte
-	for _, m := range messages {
-		sequence = append(sequence, m.Bytes()...)
-	}
 
 	for _, m := range messages {
 		_, err = topic.Write(m)

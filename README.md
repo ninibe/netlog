@@ -3,8 +3,8 @@
 # NetLog
 A lightweight, HTTP-centric, log-based (Kafka-style) message queue.
 
-## Work-in-progress!
-This is still experimental software potentially full of bugs.
+## Alpha software
+This is still early software and potentially buggy.
 To peek at the internals start with [BigLog](https://github.com/ninibe/netlog/tree/master/biglog).
 
 ### Roadmap

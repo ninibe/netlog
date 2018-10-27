@@ -10,11 +10,10 @@ import (
 	"net/http"
 
 	"comail.io/go/colog"
-	"golang.org/x/net/http2"
-
 	"github.com/ninibe/bigduration"
 	"github.com/ninibe/netlog"
 	"github.com/ninibe/netlog/transport"
+	"golang.org/x/net/http2"
 )
 
 var (

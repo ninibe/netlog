@@ -147,6 +147,12 @@ func loadSegment(indexPath string) (*segment, error) {
 		return nil, ErrLoadSegment
 	}
 
+	sh, err := readSegHeader(dataFile)
+	if err != nil {
+		Logger.Printf("error: '%s' %s", dataPath, err)
+		return nil, ErrLoadSegment
+	}
+
 	var readers int32
 	seg := &segment{
 		readers:    &readers,
@@ -155,6 +161,7 @@ func loadSegment(indexPath string) (*segment, error) {
 		indexPath:  indexPath,
 		dataFile:   dataFile,
 		dataPath:   dataPath,
+		createdTS:  sh.createdTS(),
 		writer:     dataFile,
 		notify:     make(chan struct{}, 1),
 	}
@@ -381,6 +388,10 @@ func (s *segment) Lookup(RO uint32) (l *lookupRes, err error) {
 	// highest possible entry in the index for this relative offset.
 	// it should be an exact match if there was no batching.
 	maxIFO := (RO - 1) * iw
+	// if the highest possible entry is bigger than the index itself bail.
+	if len(s.index) < int(maxIFO) {
+		return s.searchRO(RO)
+	}
 	maxRO, TS, dFO := readEntry(s.index[maxIFO:])
 
 	// found it!
@@ -519,12 +530,7 @@ func (s *segment) healthCheckPartialWrite() error {
 
 	/// prepare new data file
 	tmpDataPath := s.dataPath + ".temp"
-	err = createSegData(tmpDataPath)
-	if err != nil {
-		return err
-	}
-
-	tmpDataFile, err := os.OpenFile(tmpDataPath, os.O_RDWR|os.O_APPEND, 0666)
+	tmpDataFile, err := os.OpenFile(tmpDataPath, os.O_WRONLY|os.O_CREATE|os.O_EXCL, 0666)
 	if err != nil {
 		return err
 	}
@@ -569,7 +575,7 @@ func createSegIndex(path string, maxIndexEntries int) error {
 	}()
 
 	init := make([]byte, maxIndexEntries*iw)
-	writeEntry(init, 1, 0)
+	writeEntry(init, 1, headerSize)
 	_, err = f.Write(init)
 
 	return err
@@ -578,6 +584,12 @@ func createSegIndex(path string, maxIndexEntries int) error {
 // createSegData creates a new empty data file at the path.
 func createSegData(path string) error {
 	f, err := os.OpenFile(path, os.O_WRONLY|os.O_CREATE|os.O_EXCL, 0666)
+	if err != nil {
+		return err
+	}
+
+	sh := newSegHeader()
+	err = sh.write(f)
 	if err != nil {
 		return err
 	}
